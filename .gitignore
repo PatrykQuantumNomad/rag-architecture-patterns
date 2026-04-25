@@ -216,3 +216,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project
+.env
+.venv/
+chroma_db/
+lightrag_*/
+evaluation/results/costs/*.json
+!evaluation/results/costs/.gitkeep
+
