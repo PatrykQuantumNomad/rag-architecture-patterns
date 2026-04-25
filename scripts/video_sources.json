@@ -1,0 +1,18 @@
+[
+  {
+    "video_id": "neurips2020_lewis_rag_clip",
+    "source_url": "https://slideslive.com/38940120/retrievalaugmented-generation-for-knowledgeintensive-nlp-tasks",
+    "talk_title": "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks",
+    "speaker": "Patrick Lewis",
+    "papers_referenced": ["2005.11401"],
+    "license": "TBD_VERIFY_MANUALLY",
+    "license_verified_at": null,
+    "license_verified_by": null,
+    "clip_start_seconds": 0,
+    "clip_duration_seconds": 30,
+    "source_file_local_path": null,
+    "filename": "neurips2020_lewis_rag_clip.mp4",
+    "frame_sample_rate_fps": null,
+    "frame_count": null
+  }
+]
