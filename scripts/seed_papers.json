@@ -1,0 +1,42 @@
+[
+  {
+    "arxiv_id": "2005.11401",
+    "title": "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks (Lewis et al.)"
+  },
+  {
+    "arxiv_id": "2410.05779",
+    "title": "LightRAG: Simple and Fast Retrieval-Augmented Generation"
+  },
+  {
+    "arxiv_id": "2404.16130",
+    "title": "From Local to Global: A Graph RAG Approach to Query-Focused Summarization (GraphRAG)"
+  },
+  {
+    "arxiv_id": "2410.10594",
+    "title": "Towards Real-World Document Understanding (RAG-Anything related)"
+  },
+  {
+    "arxiv_id": "2309.01431",
+    "title": "Benchmarking Large Language Models in Retrieval-Augmented Generation (RGB)"
+  },
+  {
+    "arxiv_id": "2401.05566",
+    "title": "Self-Reflective Retrieval-Augmented Generation (Self-RAG)"
+  },
+  {
+    "arxiv_id": "2310.11511",
+    "title": "Active Retrieval Augmented Generation (FLARE)"
+  },
+  {
+    "arxiv_id": "2305.14283",
+    "title": "Query Rewriting for Retrieval-Augmented Large Language Models"
+  },
+  {
+    "arxiv_id": "2004.04906",
+    "title": "Dense Passage Retrieval for Open-Domain QA (DPR, Karpukhin et al. 2020)"
+  },
+  {
+    "arxiv_id": "2309.15217",
+    "title": "RAGAS: Automated Evaluation of Retrieval Augmented Generation"
+  }
+]

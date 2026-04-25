@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "rag-architecture-patterns"
 version = "0.1.0"
@@ -5,6 +9,11 @@ description = "Companion repo for the RAG Architecture Patterns blog post"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 dependencies = []
+
+[tool.setuptools]
+# Explicit package list — flat-layout repo with multiple top-level dirs (shared, scripts, dataset, evaluation, tier-*).
+# Only the Python source packages are installed; dataset/evaluation/tier-* are not Python packages.
+packages = ["shared", "scripts"]
 
 [project.optional-dependencies]
 shared = [
@@ -19,6 +28,7 @@ curation = [
   "arxiv>=3.0,<4",
   "semanticscholar>=0.12,<1",
   "pymupdf>=1.27,<2",
+  "Pillow>=10,<12",
 ]
 tier-1 = ["rag-architecture-patterns[shared]"]
 tier-2 = ["rag-architecture-patterns[shared]"]
