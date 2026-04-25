@@ -1,0 +1,3 @@
+# Tier 3 (Graph / LightRAG) — mirrors [project.optional-dependencies.tier-3] from ../pyproject.toml.
+# Concrete tier-specific deps (lightrag-hku, networkx) land in Phase 129.
+-e ..[tier-3]

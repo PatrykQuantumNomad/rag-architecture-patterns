@@ -1,0 +1,37 @@
+[project]
+name = "rag-architecture-patterns"
+version = "0.1.0"
+description = "Companion repo for the RAG Architecture Patterns blog post"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+dependencies = []
+
+[project.optional-dependencies]
+shared = [
+  "google-genai>=1.73,<2",
+  "pydantic>=2.10,<3",
+  "pydantic-settings>=2.10,<3",
+  "rich>=14,<16",
+  "tiktoken>=0.10,<1",
+  "python-dotenv>=1.0,<2",
+]
+curation = [
+  "arxiv>=3.0,<4",
+  "semanticscholar>=0.12,<1",
+  "pymupdf>=1.27,<2",
+]
+tier-1 = ["rag-architecture-patterns[shared]"]
+tier-2 = ["rag-architecture-patterns[shared]"]
+tier-3 = ["rag-architecture-patterns[shared]"]
+tier-4 = ["rag-architecture-patterns[shared]"]
+tier-5 = ["rag-architecture-patterns[shared]"]
+
+[dependency-groups]
+test = ["pytest>=8.4,<9"]
+dev = [{include-group = "test"}, "ruff>=0.6"]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.pytest.ini_options]
+markers = ["live: tests that hit real APIs and incur cost"]

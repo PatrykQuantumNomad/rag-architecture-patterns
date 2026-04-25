@@ -1,0 +1,3 @@
+# Tier 5 (Agentic / OpenAI Agents SDK) — mirrors [project.optional-dependencies.tier-5] from ../pyproject.toml.
+# Concrete tier-specific deps (openai-agents) land in Phase 130.
+-e ..[tier-5]

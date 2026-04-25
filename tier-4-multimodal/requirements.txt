@@ -1,0 +1,3 @@
+# Tier 4 (Multimodal / RAG-Anything) — mirrors [project.optional-dependencies.tier-4] from ../pyproject.toml.
+# Concrete tier-specific deps (raganything, mineru) land in Phase 130.
+-e ..[tier-4]
