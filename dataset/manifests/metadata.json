@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "phase": "127-repository-skeleton-enterprise-dataset",
+  "generated_at": "2026-04-25T19:28:25Z",
+  "manifests": {
+    "papers": "manifests/papers.json",
+    "figures": "manifests/figures.json",
+    "videos": "manifests/videos.json"
+  },
+  "evaluation": {
+    "golden_qa": "../evaluation/golden_qa.json"
+  },
+  "stats": {
+    "paper_count": 100,
+    "figure_count": 581,
+    "video_count": 0,
+    "total_size_mb": 290.0
+  }
+}
