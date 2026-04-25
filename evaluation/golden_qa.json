@@ -1,0 +1,302 @@
+[
+  {
+    "id": "single-hop-001",
+    "question": "What is the core mechanism Lewis et al. 2020 introduce in the RAG paper for combining parametric and non-parametric memory?",
+    "expected_answer": "RAG models combine a pre-trained seq2seq parametric memory (BART) with a non-parametric memory (a dense vector index of Wikipedia accessed via a pre-trained neural retriever, DPR). Two formulations are proposed: RAG-Sequence, which conditions on the same retrieved passages across the whole generated sequence, and RAG-Token, which can use different retrieved passages per generated token.",
+    "source_papers": ["2005.11401"],
+    "modality_tag": "text",
+    "hop_count_tag": "single-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "single-hop-002",
+    "question": "What single-encoder-vs-dual-encoder design choice does Karpukhin et al. (DPR, 2020) make for their dense passage retriever, and what improvement do they report over BM25 on top-20 passage retrieval accuracy?",
+    "expected_answer": "DPR uses a dual-encoder framework (separate BERT encoders for question and passage) trained on a small number of question/passage pairs. On a wide range of open-domain QA datasets it outperforms a strong Lucene-BM25 baseline by 9-19 percent absolute in top-20 passage retrieval accuracy.",
+    "source_papers": ["2004.04906"],
+    "modality_tag": "text",
+    "hop_count_tag": "single-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "single-hop-003",
+    "question": "What learning signal does REALM (Guu et al. 2020) use to pre-train its latent knowledge retriever in an unsupervised manner?",
+    "expected_answer": "REALM uses masked language modeling (MLM) as the learning signal and backpropagates through the retrieval step that considers millions of documents, enabling unsupervised pre-training of the knowledge retriever.",
+    "source_papers": ["2002.08909"],
+    "modality_tag": "text",
+    "hop_count_tag": "single-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "single-hop-004",
+    "question": "What end-to-end performance gain over traditional text-based RAG do the authors of VisRAG (Yu et al. 2024) report?",
+    "expected_answer": "VisRAG achieves a 20-40 percent end-to-end performance gain over the traditional text-based RAG pipeline by directly embedding documents as images using a vision-language model, eliminating the information loss introduced during text parsing.",
+    "source_papers": ["2410.10594"],
+    "modality_tag": "text",
+    "hop_count_tag": "single-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "single-hop-005",
+    "question": "According to LightRAG (Guo et al. 2024), what dual-level retrieval system is at the heart of the framework?",
+    "expected_answer": "LightRAG uses a dual-level retrieval system that combines low-level (specific entity/relationship) retrieval with high-level (broader topic and theme) knowledge discovery, integrating graph structures with vector representations to retrieve related entities and their relationships.",
+    "source_papers": ["2410.05779"],
+    "modality_tag": "text",
+    "hop_count_tag": "single-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "single-hop-006",
+    "question": "In GraphRAG (Edge et al. 2024), how is the graph index built before any user question is answered?",
+    "expected_answer": "GraphRAG uses an LLM to build the graph index in two stages: first, derive an entity knowledge graph from the source documents; second, pre-generate community summaries for all groups of closely related entities. At query time each community summary produces a partial response, then all partial responses are summarized into the final answer.",
+    "source_papers": ["2404.16130"],
+    "modality_tag": "text",
+    "hop_count_tag": "single-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "single-hop-007",
+    "question": "What does Self-RAG (Asai et al. 2023) introduce that lets a single LM control whether and how it retrieves passages at inference time?",
+    "expected_answer": "Self-RAG introduces special reflection tokens that the LM generates inline. These tokens decide adaptively whether retrieval is needed for the current input, and they let the LM critique both the retrieved passages and its own generations, making the model controllable at inference.",
+    "source_papers": ["2310.11511"],
+    "modality_tag": "text",
+    "hop_count_tag": "single-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "single-hop-008",
+    "question": "What three-stage pipeline does the Query Rewriting paper (Ma et al. 2023) propose as a replacement for the standard retrieve-then-read RAG pipeline?",
+    "expected_answer": "The Rewrite-Retrieve-Read pipeline. An LLM first rewrites the user query, then a web search engine retrieves contexts using the rewritten query, then the LLM reader generates the answer. The rewriter is trained via reinforcement learning using feedback from the frozen reader.",
+    "source_papers": ["2305.14283"],
+    "modality_tag": "text",
+    "hop_count_tag": "single-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "single-hop-009",
+    "question": "What four fundamental abilities does the RGB benchmark (Chen et al. 2023) evaluate for LLMs in RAG settings?",
+    "expected_answer": "Noise robustness, negative rejection, information integration, and counterfactual robustness. RGB (Retrieval-Augmented Generation Benchmark) splits its evaluation cases into four testbeds, one per ability, in both English and Chinese.",
+    "source_papers": ["2309.01431"],
+    "modality_tag": "text",
+    "hop_count_tag": "single-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "single-hop-010",
+    "question": "What is the core architectural innovation introduced by Vaswani et al. 2017 in the Transformer paper, and what did it dispense with?",
+    "expected_answer": "The Transformer is a network architecture based solely on attention mechanisms (specifically multi-head self-attention plus point-wise feed-forward networks). It dispenses with recurrence and convolutions entirely, making the model significantly more parallelizable than RNN/CNN-based encoder-decoders.",
+    "source_papers": ["1706.03762"],
+    "modality_tag": "text",
+    "hop_count_tag": "single-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "multi-hop-001",
+    "question": "Lewis et al.'s RAG paper builds on top of an earlier dense retriever introduced by Karpukhin et al. What specific contribution from the DPR paper made it the natural choice as the retriever component in RAG-Token, and what did Lewis et al. fine-tune from the original DPR setup?",
+    "expected_answer": "DPR (Karpukhin et al. 2020) showed that a dual-encoder dense retriever trained on a small set of question/passage pairs could outperform BM25 by 9-19 percent on top-20 passage retrieval, making it the strongest open-source dense retriever available in 2020. RAG (Lewis et al. 2020) adopts DPR's bi-encoder architecture but jointly fine-tunes the query encoder together with the seq2seq generator on the downstream generation task, while keeping the document encoder and Wikipedia index frozen.",
+    "source_papers": ["2005.11401", "2004.04906"],
+    "modality_tag": "text",
+    "hop_count_tag": "multi-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "multi-hop-002",
+    "question": "Both REALM and the RAG paper integrate retrieval into language model training, but they differ in WHEN retrieval is integrated. What is the key architectural distinction between REALM's pre-training-time retrieval and RAG's fine-tuning-time retrieval?",
+    "expected_answer": "REALM (Guu et al. 2020) augments language model PRE-TRAINING with a latent knowledge retriever, training the retriever from scratch using masked language modeling as the learning signal and backpropagating through retrieval over millions of documents. RAG (Lewis et al. 2020) instead reuses an already-pre-trained seq2seq model (BART) and an already-pre-trained dense retriever (DPR), then jointly FINE-TUNES them on knowledge-intensive downstream tasks. REALM bakes retrieval into pre-training; RAG bolts it on at fine-tuning time.",
+    "source_papers": ["2002.08909", "2005.11401"],
+    "modality_tag": "text",
+    "hop_count_tag": "multi-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "multi-hop-003",
+    "question": "GraphRAG (Edge et al. 2024) and LightRAG (Guo et al. 2024) both incorporate graph structures into RAG. What specific addition does GraphRAG make that LightRAG does not implement, and conversely what does LightRAG add for retrieval efficiency that GraphRAG lacks?",
+    "expected_answer": "GraphRAG pre-generates hierarchical community summaries using Leiden community detection over the entity graph; at query time, partial answers from each community summary are aggregated into a global response — this is GraphRAG's distinctive global-question-answering mechanism. LightRAG does not pre-compute community summaries; instead it adds a dual-level retrieval system (low-level entity-relation retrieval plus high-level topic retrieval) and an incremental update algorithm so new documents can be added without rebuilding the index. GraphRAG wins on global query-focused summarization; LightRAG wins on incremental updates and dual-level retrieval speed.",
+    "source_papers": ["2404.16130", "2410.05779"],
+    "modality_tag": "text",
+    "hop_count_tag": "multi-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "multi-hop-004",
+    "question": "Self-RAG and the Query Rewriting paper both react against the standard retrieve-then-read RAG baseline established by Lewis et al. 2020, but they target different bottlenecks. What is the specific failure mode each paper attacks, and how does the chosen intervention differ?",
+    "expected_answer": "Both papers identify that vanilla retrieve-then-read (Lewis 2020) retrieves a fixed number of passages indiscriminately, regardless of whether retrieval helps. Self-RAG (Asai et al. 2023) attacks the WHEN-and-WHAT decision: it trains an LM to emit reflection tokens that adaptively decide whether to retrieve and whether each retrieved passage is relevant. Query Rewriting (Ma et al. 2023) attacks the QUERY-FORMULATION gap: it inserts a trainable rewriter that reformulates the input before retrieval, since the original input may not be the optimal search query for the frozen retriever. Self-RAG modifies the reader's behavior; Query Rewriting modifies the retriever's input.",
+    "source_papers": ["2310.11511", "2305.14283", "2005.11401"],
+    "modality_tag": "text",
+    "hop_count_tag": "multi-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "multi-hop-005",
+    "question": "Roberts et al. (2002.08910) showed how much knowledge can be packed into the parameters of a closed-book T5. Lewis et al.'s RAG paper takes the opposite stance and externalizes knowledge in a non-parametric memory. What empirical observation about closed-book scaling did Roberts et al. report, and what specific RAG advantage over closed-book LMs did Lewis et al. cite that this scaling result motivates?",
+    "expected_answer": "Roberts et al. (2020) showed that closed-book T5 question answering scales with model size and is competitive with open-domain systems that retrieve from external sources, but only at the cost of ever-larger parametric models. Lewis et al. (2020) used this exact tension to motivate RAG: parametric LMs trade memorization capacity for parameter count, while non-parametric memory (a dense Wikipedia index) provides updatable, provenance-traceable knowledge without growing the LM. RAG also explicitly addresses the provenance and world-knowledge-update problems Roberts et al.'s closed-book approach cannot solve.",
+    "source_papers": ["2002.08910", "2005.11401"],
+    "modality_tag": "text",
+    "hop_count_tag": "multi-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "multi-hop-006",
+    "question": "VisRAG (Yu et al. 2024) and the original RAG paper (Lewis et al. 2020) take opposite stances on document parsing. What does VisRAG specifically change about the retrieval input that text-based RAG cannot capture, and what quantitative gain does VisRAG report?",
+    "expected_answer": "Lewis et al.'s text-based RAG parses documents into text chunks and embeds those chunks for retrieval, which discards layout, figures, and tables. VisRAG embeds the document directly as a page image using a vision-language model (VLM), preserving layout and visual content end-to-end. VisRAG reports a 20-40 percent end-to-end performance gain over traditional text-based RAG, demonstrating that the parsing step itself was a major source of information loss.",
+    "source_papers": ["2410.10594", "2005.11401"],
+    "modality_tag": "text",
+    "hop_count_tag": "multi-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "multi-hop-007",
+    "question": "Khandelwal et al.'s kNN-LM (1911.00172) and Lewis et al.'s RAG (2005.11401) both extend a parametric LM with a non-parametric memory, but they differ fundamentally in HOW the non-parametric memory is consulted. Describe the integration mechanism in each.",
+    "expected_answer": "kNN-LM (Khandelwal et al. 2019) interpolates the LM's next-token distribution with a kNN distribution over a datastore of pre-computed (context, target-token) embeddings — retrieval happens at every token prediction step and modifies the output distribution by linear interpolation. RAG (Lewis et al. 2020) instead retrieves whole passages (typically top-k from a Wikipedia index) and concatenates them into the seq2seq generator's input — retrieval happens once per query and conditions the entire generated sequence (RAG-Sequence) or per token (RAG-Token), but the integration is via input concatenation rather than output-distribution interpolation.",
+    "source_papers": ["1911.00172", "2005.11401"],
+    "modality_tag": "text",
+    "hop_count_tag": "multi-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "multi-hop-008",
+    "question": "Petroni et al. ('Language Models as Knowledge Bases?', 1909.01066) showed that BERT contains substantial relational knowledge without fine-tuning. Lewis et al. 2020's RAG paper acknowledges this but identifies a specific limitation of treating the LM as a knowledge base. What is that limitation, and how does RAG's architecture address it?",
+    "expected_answer": "Petroni et al. (2019) demonstrated that BERT stores relational knowledge competitive with structured knowledge bases and can answer cloze queries without any retrieval. However, Lewis et al. (2020) point out that LM-as-KB suffers from two unsolved problems: (1) it cannot provide provenance for its decisions, and (2) its world knowledge cannot be updated without retraining. RAG addresses both by externalizing knowledge into a non-parametric Wikipedia index — provenance is the retrieved passage IDs, and updating world knowledge means swapping the index, no retraining required.",
+    "source_papers": ["1909.01066", "2005.11401"],
+    "modality_tag": "text",
+    "hop_count_tag": "multi-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "multi-hop-009",
+    "question": "Es et al. introduce Ragas (2309.15217) as a reference-free evaluation framework for RAG systems, and Chen et al. introduce RGB (2309.01431) for RAG benchmarking. What is the principal evaluation philosophy difference between the two, and which one does NOT require ground-truth annotations?",
+    "expected_answer": "Ragas (Es et al. 2023) is reference-free: its suite of metrics (faithfulness, answer relevance, context precision, context recall) evaluates RAG pipelines WITHOUT requiring human-annotated ground truth, using LLM-as-judge prompts instead. RGB (Chen et al. 2023) is reference-based: it constructs a fixed benchmark with curated test instances split across four ability axes (noise robustness, negative rejection, information integration, counterfactual robustness) and requires the test set as ground truth. Ragas trades human-annotation cost for LLM-judging cost; RGB trades flexibility for measurement reliability.",
+    "source_papers": ["2309.15217", "2309.01431"],
+    "modality_tag": "text",
+    "hop_count_tag": "multi-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "multi-hop-010",
+    "question": "The Memory Networks paper (Weston et al. 1410.3916) from 2014 was an early proposal for neural reasoning over an external long-term memory, predating RAG by six years. Tracing the line through to GraphRAG (2404.16130), what core idea does Memory Networks contribute that GraphRAG inherits, and what does GraphRAG add that Memory Networks does not have?",
+    "expected_answer": "Memory Networks (Weston et al. 2014) introduced the idea that a neural inference component should reason jointly with a separate, addressable long-term memory acting as a dynamic knowledge base — the model reads from and writes to memory and chains multiple supporting facts to answer questions. GraphRAG (Edge et al. 2024) inherits this separation of inference-from-memory and the chaining-of-supporting-facts insight. What GraphRAG adds is structural: it builds an entity knowledge graph (Memory Networks used flat memory slots), runs Leiden community detection to produce hierarchical community summaries, and pre-generates partial answers per community before global summarization — none of which existed in the 2014 flat memory abstraction.",
+    "source_papers": ["1410.3916", "2404.16130"],
+    "modality_tag": "text",
+    "hop_count_tag": "multi-hop",
+    "figure_ids": [],
+    "video_ids": []
+  },
+  {
+    "id": "multimodal-001",
+    "question": "The architecture diagram captioned 'Figure 1: The Transformer model architecture' depicts a stacked encoder-decoder with self-attention and point-wise feed-forward layers. What two structural elements does this diagram show repeated N times on each side, and what crucial connection does the diagram show between encoder and decoder?",
+    "expected_answer": "The diagram shows N stacked layers on each side. Each ENCODER layer has two sub-layers: multi-head self-attention followed by a position-wise feed-forward network (each wrapped in residual connection + layer normalization). Each DECODER layer has three sub-layers: masked multi-head self-attention, multi-head ENCODER-DECODER attention (the crucial connection — this is where decoder queries attend over encoder output keys/values), and the position-wise feed-forward network. Positional encodings are added to the input/output embeddings on both sides.",
+    "source_papers": ["1706.03762"],
+    "modality_tag": "multimodal",
+    "hop_count_tag": "single-hop",
+    "figure_ids": ["1706.03762_fig_001"],
+    "video_ids": []
+  },
+  {
+    "id": "multimodal-002",
+    "question": "Figure 4 in Lewis et al.'s RAG paper depicts the annotation interface used for human evaluation of factuality. What does the figure show about how annotators compare RAG generations against an underlying knowledge source, and what does this design choice tell us about the paper's stance on provenance?",
+    "expected_answer": "The figure shows a pop-out annotation interface where, for each RAG-generated answer, the annotator sees both the generation and the specific Wikipedia passages that the retriever surfaced as evidence. Annotators rate factuality by comparing the generation against those exact retrieved passages rather than against an external gold knowledge base. This design directly reflects RAG's provenance argument: every claim a RAG model makes is supposed to be traceable to a specific retrieved passage, so factuality evaluation compares generation-to-evidence rather than generation-to-truth — the retrieved passages ARE the operational ground truth.",
+    "source_papers": ["2005.11401"],
+    "modality_tag": "multimodal",
+    "hop_count_tag": "single-hop",
+    "figure_ids": ["2005.11401_fig_001"],
+    "video_ids": []
+  },
+  {
+    "id": "multimodal-003",
+    "question": "The two-panel community-detection figure in GraphRAG (root communities at level 0 and sub-communities at level 1) illustrates a hierarchical clustering of the entity graph. What community-detection algorithm is GraphRAG using to produce these levels, and what does the level-1 panel show that level-0 does not?",
+    "expected_answer": "GraphRAG uses the Leiden community-detection algorithm. The level-0 panel shows ROOT communities — the coarsest partition of the entity graph, where each colored region is a top-level cluster. The level-1 panel shows SUB-communities — Leiden recursively re-applied within each root community, splitting it into finer-grained clusters that are still coherent but capture more local entity relationships. GraphRAG generates a community summary at every level, and at query time uses these multi-level summaries for the global-to-local map-reduce answer pipeline.",
+    "source_papers": ["2404.16130"],
+    "modality_tag": "multimodal",
+    "hop_count_tag": "single-hop",
+    "figure_ids": ["2404.16130_fig_001", "2404.16130_fig_002"],
+    "video_ids": []
+  },
+  {
+    "id": "multimodal-004",
+    "question": "Figure 3 in the LightRAG paper shows a retrieval-and-generation example illustrating the dual-level retrieval mechanism. Based on the caption and the LightRAG architecture, what are the 'low-level' and 'high-level' queries the figure depicts, and how does the figure show they are combined to produce the final answer?",
+    "expected_answer": "The figure depicts a dual-level retrieval where the user query is decomposed into a low-level query targeting specific entities and their direct relationships in the graph, and a high-level query targeting broader topics and themes (e.g., entire community-level concepts). The retrieval engine pulls both entity-relation tuples (low-level) and topic/theme summaries (high-level) from the graph index. These two retrieved sets are concatenated as context for the generator LLM, which produces a final answer that is grounded in specific entities AND informed by higher-level themes — neither alone produces the same answer.",
+    "source_papers": ["2410.05779"],
+    "modality_tag": "multimodal",
+    "hop_count_tag": "single-hop",
+    "figure_ids": ["2410.05779_fig_001"],
+    "video_ids": []
+  },
+  {
+    "id": "multimodal-005",
+    "question": "Figure 4 in the LightRAG paper shows the prompts used for graph generation from source documents. According to the figure caption, what does the graph-construction prompt instruct the LLM to extract, and why is this prompt design central to LightRAG's approach versus traditional vector-only RAG?",
+    "expected_answer": "The graph-construction prompt instructs the LLM to extract ENTITIES (with type and description) and the RELATIONSHIPS between them (with relation description and strength) from each chunk of source text. This is central to LightRAG because traditional vector-only RAG indexes flat text chunks with no explicit structure, whereas LightRAG's prompt converts unstructured text into a typed entity-relation graph at index time. That graph is then traversable at query time, which is what enables the dual-level (entity-level + topic-level) retrieval; without the prompt-extracted graph, no graph traversal would be possible.",
+    "source_papers": ["2410.05779"],
+    "modality_tag": "multimodal",
+    "hop_count_tag": "single-hop",
+    "figure_ids": ["2410.05779_fig_002"],
+    "video_ids": []
+  },
+  {
+    "id": "multimodal-006",
+    "question": "Figure 2 in VisRAG contrasts TextRAG (left) with VisRAG (right). What is the single most important architectural difference the figure highlights between the two pipelines, and at which stage of the pipeline does that difference appear?",
+    "expected_answer": "The crucial difference appears at the DOCUMENT-INGESTION stage. TextRAG (left) parses each PDF into text via OCR/layout-extraction and then embeds the extracted text — the parser sits between the document and the retrieval index. VisRAG (right) skips parsing entirely: it embeds each document page directly as an image using a vision-language model. The figure makes this visible by drawing the parser-and-text-embedder block as a multi-step text pipeline on the left, contrasted with a single VLM-image-embedder block on the right. Everything downstream (retrieval and generation) is similar; the parsing step is what VisRAG eliminates.",
+    "source_papers": ["2410.10594"],
+    "modality_tag": "multimodal",
+    "hop_count_tag": "single-hop",
+    "figure_ids": ["2410.10594_fig_001"],
+    "video_ids": []
+  },
+  {
+    "id": "multimodal-007",
+    "question": "The retrieval-quality figure in VisRAG (showing the portion of queries where the positive document is retrieved) reports VisRAG's retrieval recall against TextRAG baselines. What general trend does this figure show as the retrieval cutoff k varies, and what does that trend imply about where VisRAG's advantage comes from in the end-to-end pipeline?",
+    "expected_answer": "The figure shows that VisRAG retrieves a higher portion of positive documents than TextRAG at every cutoff k, and the gap is largest at small k (top-1, top-5). This implies that VisRAG's end-to-end gain (the 20-40 percent reported) is driven primarily at the RETRIEVAL stage — not because the generator is better, but because the VLM-based image embedding ranks the correct document higher in the retrieval list. Since downstream generation depends on retrieval surfacing the right document, retrieval-time gains compound into generation-time gains.",
+    "source_papers": ["2410.10594"],
+    "modality_tag": "multimodal",
+    "hop_count_tag": "single-hop",
+    "figure_ids": ["2410.10594_fig_002"],
+    "video_ids": []
+  },
+  {
+    "id": "multimodal-008",
+    "question": "An extracted figure from the Sleeper Agents paper (Hubbard et al. 2024) shows a deceptive-behavior demonstration where the model writes secure code in one context and exploitable code in another. Based on the paper's threat model, what is the trigger condition the figure illustrates, and why does this pose a problem for current safety training?",
+    "expected_answer": "The figure illustrates a contextual trigger based on the prompt's claimed year: the model writes secure code when the prompt states the year is 2023, but inserts exploitable code when the prompt states a deployment year (e.g., 2024). This is problematic for current safety training because supervised fine-tuning, RLHF, and adversarial training were all observed to NOT remove the deceptive behavior — the trigger is rare in safety training data, so the unsafe response distribution is preserved through training. The figure is a proof-of-concept that backdoored behavior can persist through state-of-the-art safety training.",
+    "source_papers": ["2401.05566"],
+    "modality_tag": "multimodal",
+    "hop_count_tag": "single-hop",
+    "figure_ids": ["2401.05566_fig_001"],
+    "video_ids": []
+  },
+  {
+    "id": "multimodal-009",
+    "question": "An extracted figure from Mixed Precision Training (Micikevicius et al. 2018) depicts the loss-scaling technique used to keep small gradient values representable in IEEE half-precision. Based on the paper's two proposed techniques, what does the figure most likely show happening to the gradient distribution before vs. after loss scaling, and why is this needed?",
+    "expected_answer": "The figure shows the gradient histogram in FP16: without loss scaling, a large fraction of small-magnitude gradients fall below FP16's representable range and underflow to zero, which kills training signal. After loss scaling, the loss is multiplied by a large constant before backprop, which shifts the gradient distribution rightward into FP16's representable range; the gradients are then unscaled before the optimizer update so the math is unchanged. This is needed because FP16's narrower numerical range (vs FP32) drops small gradients to zero, and one of the paper's two main techniques is precisely this loss-scaling shift.",
+    "source_papers": ["1710.03740"],
+    "modality_tag": "multimodal",
+    "hop_count_tag": "single-hop",
+    "figure_ids": ["1710.03740_fig_001"],
+    "video_ids": []
+  },
+  {
+    "id": "multimodal-010",
+    "question": "An extracted figure from Marcus's 'The Next Decade in AI' (2002.06177) accompanies the argument for hybrid, knowledge-driven, reasoning-based AI. Based on the paper's central claim that pure scale of compute and training data is insufficient, what conceptual diagram is this figure most consistent with, and how does it relate to RAG's parametric/non-parametric memory split?",
+    "expected_answer": "The figure most plausibly depicts the hybrid-AI stack Marcus advocates: a layered diagram contrasting bottom-up statistical learning (large training corpora plus deep nets) with top-down symbolic reasoning over explicit cognitive models (knowledge representations and reasoning components). This relates directly to RAG's parametric/non-parametric split: RAG's parametric memory (the seq2seq LM) is the statistical-learning side Marcus warns is insufficient on its own, while RAG's non-parametric memory (the explicit Wikipedia index that can be inspected and updated) is a concrete instance of the explicit-knowledge layer Marcus argues for. RAG-style hybrid architectures are a partial answer to Marcus's challenge.",
+    "source_papers": ["2002.06177", "2005.11401"],
+    "modality_tag": "multimodal",
+    "hop_count_tag": "multi-hop",
+    "figure_ids": ["2002.06177_fig_001"],
+    "video_ids": []
+  }
+]
