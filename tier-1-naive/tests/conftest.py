@@ -1,8 +1,9 @@
 """Tier-1-local pytest configuration.
 
-Adds a ``tier1_live_keys`` fixture that skips the calling test if EITHER
-``OPENAI_API_KEY`` or ``GEMINI_API_KEY`` is missing — Tier 1 needs both for
-the end-to-end run (OpenAI for embeddings, Gemini for chat).
+Adds a ``tier1_live_keys`` fixture that skips the calling test if
+``OPENROUTER_API_KEY`` is missing. Since Plan 128-06 Tier 1 routes BOTH
+embeddings and chat completion through OpenRouter, a single key gates the
+live test (down from the dual OpenAI + Gemini requirement of Plan 128-05).
 
 Pytest's conftest discovery is per-directory, so we also call
 ``load_dotenv()`` at import here. The repo-root ``tests/conftest.py`` already
@@ -14,25 +15,35 @@ conftest is guaranteed to load — so we duplicate the bootstrap to keep the
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import pytest
 from dotenv import load_dotenv
 
-# Load repo-root .env so OPENAI_API_KEY + GEMINI_API_KEY populate even when
-# pytest is invoked from this subdirectory.
-load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Ensure the repo root is on sys.path so `from tier_1_naive import ...` resolves
+# in pytest's process. The non-live tests use ``importlib.util`` to load modules
+# directly, but the live test exercises the public import path the way ``main.py``
+# does — and main.py adds the repo root to sys.path at script-startup time.
+# Pytest does NOT replicate that, so we replicate it here for the live test.
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+# Load repo-root .env so OPENROUTER_API_KEY populates even when pytest is
+# invoked from this subdirectory.
+load_dotenv(_REPO_ROOT / ".env")
 
 
 @pytest.fixture()
 def tier1_live_keys() -> None:
-    """Skip the calling test if either OPENAI_API_KEY or GEMINI_API_KEY is missing.
+    """Skip the calling test if ``OPENROUTER_API_KEY`` is missing.
 
-    Tier 1 needs both: OpenAI for ``text-embedding-3-small`` and Gemini for
-    ``gemini-2.5-flash`` chat completion. A test that depends on this fixture
-    is therefore guaranteed to have both keys present when it runs.
+    Tier 1 routes both embeddings (``openai/text-embedding-3-small``) and
+    chat completion (default ``google/gemini-2.5-flash``, override via
+    ``--model``) through OpenRouter. A test that depends on this fixture is
+    therefore guaranteed to have a usable key when it runs.
     """
-    if not os.getenv("OPENAI_API_KEY"):
-        pytest.skip("OPENAI_API_KEY not set; tier-1 live test skipped")
-    if not os.getenv("GEMINI_API_KEY"):
-        pytest.skip("GEMINI_API_KEY not set; tier-1 live test skipped")
+    if not os.getenv("OPENROUTER_API_KEY"):
+        pytest.skip("OPENROUTER_API_KEY not set; tier-1 live test skipped")

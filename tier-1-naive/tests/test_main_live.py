@@ -1,11 +1,12 @@
-"""Tier 1: live end-to-end test (real OpenAI + Gemini APIs).
+"""Tier 1: live end-to-end test (real OpenRouter API).
 
 Marked ``@pytest.mark.live`` — skipped automatically by pytest unless run
-with ``-m live`` and both API keys are present in the environment.
+with ``-m live`` and ``OPENROUTER_API_KEY`` is present in the environment.
 
-Cost: ~$0.001 per run (2 papers, ~20 chunks, 1 query). The test uses a
-``tmp_path`` ChromaDB to avoid polluting the canonical
-``chroma_db/tier-1-naive/`` directory used by Tier 5 (Phase 130).
+Cost: ~$0.001 per run (2 papers, ~20 chunks, 1 query). Both embedding and
+chat go through OpenRouter (single key). The test uses a ``tmp_path``
+ChromaDB to avoid polluting the canonical ``chroma_db/tier-1-naive/``
+directory used by Tier 5 (Phase 130).
 
 This test is the **phase verification gate**: it exercises all three Phase
 128 ROADMAP success criteria in a single run:
@@ -75,13 +76,16 @@ def test_ingest_and_query_end_to_end_2papers(
     rc_ingest = tier1_main.cmd_ingest(reset=False, tracker=tracker, console=console)
     assert rc_ingest == 0
     embed_cost = tracker.total_usd()
-    assert embed_cost > 0, "Ingest must record an OpenAI embedding cost"
+    assert embed_cost > 0, "Ingest must record an OpenRouter embedding cost"
 
     # 4. Run a query. Use the canonical DEFAULT_QUERY so the test mirrors
-    #    what `python tier-1-naive/main.py` does end-to-end.
+    #    what `python tier-1-naive/main.py` does end-to-end. The chat model
+    #    defaults to DEFAULT_CHAT_MODEL (an OpenRouter slug like
+    #    "google/gemini-2.5-flash") which must be present in shared.pricing.PRICES.
     rc_query = tier1_main.cmd_query(
         query=tier1_main.DEFAULT_QUERY,
         top_k=tier1_main.DEFAULT_TOP_K,
+        model=tier1_main.DEFAULT_CHAT_MODEL,
         tracker=tracker,
         console=console,
     )
