@@ -30,7 +30,12 @@ curation = [
   "pymupdf>=1.27,<2",
   "Pillow>=10,<12",
 ]
-tier-1 = ["rag-architecture-patterns[shared]"]
+tier-1 = [
+  "rag-architecture-patterns[shared]",
+  "chromadb>=1.5.8,<2",
+  "openai>=1.50,<3",
+  "pymupdf>=1.27,<2",
+]
 tier-2 = ["rag-architecture-patterns[shared]"]
 tier-3 = ["rag-architecture-patterns[shared]"]
 tier-4 = ["rag-architecture-patterns[shared]"]
