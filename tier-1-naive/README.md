@@ -1,8 +1,10 @@
 # Tier 1: Naive RAG
 
-> Baseline RAG: ChromaDB + OpenAI embeddings (`text-embedding-3-small`, 1536-dim) + Gemini chat (`gemini-2.5-flash`). Direct API calls, no framework.
+> Baseline RAG via the **OpenRouter unified gateway**: ChromaDB + `openai/text-embedding-3-small` (1536-dim) + a configurable chat model (default `google/gemini-2.5-flash`, override with `--model`). Direct API calls, no framework.
 
 This is the **baseline** against which Tiers 2–5 prove their value. Naive RAG is intentionally simple — one embedding model, one vector store, one chat model, and a single retrieval hop. It works extremely well for single-paper questions, and the places where it fails are exactly the motivation for the higher tiers.
+
+Tier 1 routes both embeddings and chat through [OpenRouter](https://openrouter.ai), so a single `OPENROUTER_API_KEY` unlocks the whole pipeline and lets you swap chat models on the command line without touching code (`--model anthropic/claude-haiku-4.5`, `--model openai/gpt-4o-mini`, etc.). The OpenAI Python SDK is fully compatible with OpenRouter — only the `base_url` and key change.
 
 If you read only one tier in this repo, this is the one to start with: every higher tier compares its results against `chroma_db/tier-1-naive/`.
 
@@ -13,11 +15,12 @@ If you read only one tier in this repo, this is the one to start with: every hig
 ```bash
 cd tier-1-naive
 uv pip install -r requirements.txt          # or: cd .. && uv pip install -e ".[tier-1]"
-cp ../.env.example ../.env                  # then edit and set OPENAI_API_KEY + GEMINI_API_KEY
+cp ../.env.example ../.env                  # then edit and set OPENROUTER_API_KEY (+ GEMINI_API_KEY for Phase 127 smoke test)
 python main.py                              # default: ingest if empty, then run canned query
+python main.py --model anthropic/claude-haiku-4.5 --query "..."  # swap chat model on the fly
 ```
 
-The first run ingests every PDF in `dataset/papers/` into `chroma_db/tier-1-naive/` (one-time cost ~$0.011 for 100 papers) and then answers the canonical demo question. Subsequent runs reuse the index — `cmd_ingest` is idempotent and prints a yellow notice when the collection is already populated.
+Get an OpenRouter key at [openrouter.ai/keys](https://openrouter.ai/keys); browse models at [openrouter.ai/models](https://openrouter.ai/models). The first run ingests every PDF in `dataset/papers/` into `chroma_db/tier-1-naive/` (one-time cost ~$0.011 for 100 papers) and then answers the canonical demo question. Subsequent runs reuse the index — `cmd_ingest` is idempotent and prints a yellow notice when the collection is already populated.
 
 ---
 
@@ -29,21 +32,26 @@ The first run ingests every PDF in `dataset/papers/` into `chroma_db/tier-1-naiv
 | `--query "..."` | Run a single retrieval-augmented query against the persisted index. | canned demo question |
 | `--top-k N` | Number of chunks to retrieve. | 5 |
 | `--reset` | Wipe the collection before `--ingest`. Required when changing HNSW config. | off |
+| `--model <slug>` | OpenRouter chat model slug for answer generation. Must exist in `shared/pricing.py` for cost tracking. | `google/gemini-2.5-flash` |
 
-Invoking `python main.py` with **no flags** auto-runs `--ingest` (idempotent) followed by the default `--query`. This is the canonical "does it work?" demo.
+Invoking `python main.py` with **no flags** auto-runs `--ingest` (idempotent) followed by the default `--query` against the default `--model`. This is the canonical "does it work?" demo.
 
 ---
 
 ## Expected cost (vintage 2026-04)
 
+OpenRouter passes provider pricing through 1:1, so the underlying-vendor numbers below remain accurate. Swap the chat model with `--model` to see a different per-query cost; the embedding cost is fixed by the model used for the index.
+
 | Operation | Cost |
 |-----------|------|
-| One-time ingest (100 papers, ~570k embed tokens) | ~$0.011 |
+| One-time ingest (100 papers, ~570k embed tokens via `openai/text-embedding-3-small`) | ~$0.011 |
 | Per-query embedding | <$0.000001 |
-| Per-query Gemini chat (~3k in / 200 out) | ~$0.0014 |
-| **Total per query** (excluding one-time ingest) | **~$0.0014** |
+| Per-query chat (~3k in / 200 out) — `google/gemini-2.5-flash` | ~$0.0014 |
+| Per-query chat (~3k in / 200 out) — `anthropic/claude-haiku-4.5` | ~$0.004 |
+| Per-query chat (~3k in / 200 out) — `openai/gpt-4o-mini` | ~$0.0006 |
+| **Total per query** (`google/gemini-2.5-flash`, excl. ingest) | **~$0.0014** |
 
-Numbers are pulled verbatim from `128-RESEARCH.md` "Cost estimates @ 2026-04". Cost and latency are printed for every query via `shared.display.render_query_result` plus a `Latency:` footer line, and a per-run JSON is written to `evaluation/results/costs/tier-1-<timestamp>.json`.
+Cost and latency are printed for every query via `shared.display.render_query_result` plus a `Latency:` footer line, and a per-run JSON is written to `evaluation/results/costs/tier-1-<timestamp>.json`. To add a model not yet in `shared/pricing.py`, append a row keyed on its OpenRouter slug (e.g. `"meta-llama/llama-3.3-70b-instruct"`) with the verified vendor price.
 
 ---
 
@@ -95,15 +103,15 @@ The 7-stage pipeline, end-to-end:
 PDF
  └─> extract_pages          (PyMuPDF, text-only)
       └─> chunk_page        (512 tokens / 64 overlap, tiktoken cl100k_base)
-           └─> embed_batch  (OpenAI text-embedding-3-small, 1536-dim, batch=100)
+           └─> embed_batch  (OpenRouter -> openai/text-embedding-3-small, 1536-dim, batch=100)
                 └─> ChromaDB (cosine HNSW, persistent at chroma_db/tier-1-naive/)
                      └─> retrieve_top_k (k=5)
                           └─> build_prompt (context-stuffed)
-                               └─> Gemini chat (gemini-2.5-flash)
+                               └─> chat.complete (OpenRouter, --model selectable)
                                     └─> render_query_result + Latency:
 ```
 
-All stages are direct API calls — **no LangChain, no LlamaIndex, no framework**. The whole tier is ~500 lines across `ingest.py`, `embed_openai.py`, `store.py`, `retrieve.py`, `prompt.py`, and `main.py`. Higher tiers will introduce frameworks where they earn their keep.
+All stages are direct API calls — **no LangChain, no LlamaIndex, no framework**. The whole tier is ~600 lines across `ingest.py`, `embed_openai.py`, `chat.py`, `store.py`, `retrieve.py`, `prompt.py`, and `main.py`. The OpenAI Python SDK does double duty: it speaks to OpenRouter for both embeddings and chat by overriding `base_url` to `https://openrouter.ai/api/v1`. Higher tiers will introduce frameworks where they earn their keep.
 
 ---
 
