@@ -38,6 +38,15 @@ def test_env_example_documents_optional_keys() -> None:
         assert key in text, f"{key} must be documented in .env.example"
 
 
+def test_env_example_documents_openrouter_api_key() -> None:
+    """REQUIRED for Tier 1+ — chat + embeddings via the OpenRouter gateway."""
+    text = _read_env_example()
+    assert "OPENROUTER_API_KEY" in text, (
+        "OPENROUTER_API_KEY must be documented in .env.example "
+        "(REQUIRED for Tier 1 chat + embeddings, Plan 128-06)"
+    )
+
+
 def test_env_example_documents_default_models() -> None:
     text = _read_env_example()
     for key in ("DEFAULT_CHAT_MODEL", "DEFAULT_EMBEDDING_MODEL"):

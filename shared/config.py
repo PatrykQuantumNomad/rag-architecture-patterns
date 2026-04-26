@@ -29,12 +29,19 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # REQUIRED — ValidationError raised by get_settings() if absent.
+    # REQUIRED — ValidationError raised by get_settings() if absent. Used by
+    # the legacy shared.llm Gemini client and the Phase 127 smoke test.
     gemini_api_key: SecretStr = Field(..., alias="GEMINI_API_KEY")
 
-    # Optional — only needed for tiers 2/5 (OpenAI) or curation (Semantic Scholar).
+    # Optional — only needed for direct-OpenAI use cases (legacy) or curation.
     openai_api_key: SecretStr | None = Field(None, alias="OPENAI_API_KEY")
     s2_api_key: SecretStr | None = Field(None, alias="S2_API_KEY")
+
+    # OpenRouter unified gateway (https://openrouter.ai). REQUIRED for Tier 1+
+    # because Tier 1 routes BOTH embeddings and chat completions through it.
+    # Optional at validation time so importing shared.config does not require
+    # OPENROUTER_API_KEY in environments that only run Phase 127's smoke test.
+    openrouter_api_key: SecretStr | None = Field(None, alias="OPENROUTER_API_KEY")
 
     # Defaults align with the Gemini-first stack the smoke test exercises.
     default_chat_model: str = Field("gemini-2.5-flash", alias="DEFAULT_CHAT_MODEL")
