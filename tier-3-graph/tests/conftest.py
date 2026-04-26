@@ -45,3 +45,19 @@ def tier3_live_keys() -> None:
     """
     if not os.getenv("OPENROUTER_API_KEY"):
         pytest.skip("OPENROUTER_API_KEY not set; tier-3 live test skipped")
+
+
+@pytest.fixture()
+def tier3_live_keys_ok() -> None:
+    """Alias of ``tier3_live_keys`` matching the Plan 07 live-test contract.
+
+    Phase 129 Plan 07 specifies ``tier3_live_keys_ok`` in its `<interfaces>`
+    section; Plan 03 shipped ``tier3_live_keys`` first. We keep both names
+    pointing at the same skip-without-OPENROUTER_API_KEY semantics so existing
+    tests (Plan 03 / Plan 05) and Plan 07's live e2e test can both depend on
+    the fixture without renaming churn.
+    """
+    if not os.getenv("OPENROUTER_API_KEY"):
+        pytest.skip(
+            "OPENROUTER_API_KEY not set — live Tier 3 tests skip cleanly"
+        )
