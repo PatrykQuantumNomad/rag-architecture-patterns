@@ -222,6 +222,7 @@ __marimo__/
 .venv/
 chroma_db/
 lightrag_*/
+tier-2-managed/.store_id
 evaluation/results/costs/*.json
 !evaluation/results/costs/.gitkeep
 
