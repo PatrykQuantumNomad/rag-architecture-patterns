@@ -13,9 +13,10 @@ dependencies = []
 [tool.setuptools]
 # Explicit package list — flat-layout repo with multiple top-level dirs (shared, scripts, dataset, evaluation, tier-*).
 # Only the Python source packages are installed; dataset/evaluation/tier-* are not Python packages.
-# ``tier_1_naive`` is an importable shim package that re-exports modules from the
-# hyphenated ``tier-1-naive/`` directory (hyphens are not valid Python identifiers).
-packages = ["shared", "scripts", "tier_1_naive"]
+# ``tier_1_naive`` and ``tier_3_graph`` are importable shim packages that re-export
+# modules from the hyphenated ``tier-1-naive/`` / ``tier-3-graph/`` directories
+# (hyphens are not valid Python identifiers).
+packages = ["shared", "scripts", "tier_1_naive", "tier_3_graph"]
 
 [project.optional-dependencies]
 shared = [
