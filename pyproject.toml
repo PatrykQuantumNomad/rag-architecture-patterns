@@ -39,7 +39,12 @@ tier-1 = [
   "pymupdf>=1.27,<2",
 ]
 tier-2 = ["rag-architecture-patterns[shared]"]
-tier-3 = ["rag-architecture-patterns[shared]"]
+tier-3 = [
+  "rag-architecture-patterns[shared]",
+  "lightrag-hku==1.4.15",
+  "openai>=1.50,<3",
+  "pymupdf>=1.27,<2",
+]
 tier-4 = ["rag-architecture-patterns[shared]"]
 tier-5 = ["rag-architecture-patterns[shared]"]
 
