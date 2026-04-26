@@ -47,8 +47,19 @@ tier-3 = [
   "openai>=1.50,<3",
   "pymupdf>=1.27,<2",
 ]
-tier-4 = ["rag-architecture-patterns[shared]"]
-tier-5 = ["rag-architecture-patterns[shared]"]
+tier-4 = [
+  "rag-architecture-patterns[shared]",
+  "raganything==1.2.10",
+  "lightrag-hku==1.4.15",
+  "openai>=1.50,<3",
+  "Pillow>=10,<12",
+]
+tier-5 = [
+  "rag-architecture-patterns[shared]",
+  "openai-agents[litellm]==0.14.6",
+  "chromadb>=1.5.8,<2",
+  "openai>=1.50,<3",
+]
 
 [dependency-groups]
 test = ["pytest>=8.4,<9"]

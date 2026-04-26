@@ -226,3 +226,8 @@ tier-2-managed/.store_id
 evaluation/results/costs/*.json
 !evaluation/results/costs/.gitkeep
 
+# Phase 130 — Tier 4 RAG-Anything working dir + MineRU intermediate dirs
+rag_anything_storage/
+tier-4-multimodal/.cache/
+tier-4-multimodal/output/
+
