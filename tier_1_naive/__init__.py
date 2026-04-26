@@ -52,7 +52,7 @@ def _load(submodule: str):
 # Eagerly register all known tier-1-naive submodules so that
 # ``from tier_1_naive.X import Y`` works without the caller knowing about
 # the shim mechanics.
-for _name in ("ingest", "embed_openai", "store", "retrieve", "prompt", "main"):
+for _name in ("ingest", "embed_openai", "chat", "store", "retrieve", "prompt", "main"):
     try:
         _load(_name)
     except ImportError:

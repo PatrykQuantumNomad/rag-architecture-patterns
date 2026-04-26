@@ -38,8 +38,12 @@ from rich.console import Console  # noqa: E402
 from shared.config import get_settings  # noqa: E402
 from shared.cost_tracker import CostTracker  # noqa: E402
 from shared.display import render_query_result  # noqa: E402
-from shared.llm import get_llm_client  # noqa: E402
 from shared.loader import DatasetLoader  # noqa: E402
+from tier_1_naive.chat import (  # noqa: E402
+    DEFAULT_CHAT_MODEL,
+    build_chat_client,
+    complete as chat_complete,
+)
 from tier_1_naive.embed_openai import (  # noqa: E402
     EMBED_MODEL,
     build_openai_client,
@@ -103,7 +107,7 @@ def cmd_ingest(reset: bool, tracker: CostTracker, console: Console) -> int:
     console.print(
         f"[cyan]Built {len(all_chunks)} chunks. "
         f"Estimated embed cost: ~${(len(all_chunks) * 512 / 1_000_000) * 0.02:.4f} "
-        f"(text-embedding-3-small @ $0.02/1M tokens, conservative).[/cyan]"
+        f"({EMBED_MODEL} @ $0.02/1M tokens via OpenRouter, conservative).[/cyan]"
     )
 
     oai = build_openai_client()
@@ -130,12 +134,18 @@ def cmd_ingest(reset: bool, tracker: CostTracker, console: Console) -> int:
 
 
 def cmd_query(
-    query: str, top_k: int, tracker: CostTracker, console: Console
+    query: str,
+    top_k: int,
+    model: str,
+    tracker: CostTracker,
+    console: Console,
 ) -> int:
     """Run a single retrieval-augmented query and render the result.
 
     Cost (embed + LLM) and end-to-end latency are printed via
-    shared.display.render_query_result + a latency footer line.
+    shared.display.render_query_result + a latency footer line. Both the
+    embedding and the chat completion go through OpenRouter (single key,
+    selectable chat model).
     """
     coll = open_collection(reset=False)
     if coll.count() == 0:
@@ -147,14 +157,13 @@ def cmd_query(
 
     t0 = time.monotonic()
 
-    oai = build_openai_client()
-    [qv] = embed_batch(oai, [query], tracker)
+    embed_client = build_openai_client()
+    [qv] = embed_batch(embed_client, [query], tracker)
     res = retrieve_top_k(coll, query_vec=qv, k=top_k)
 
     prompt = build_prompt(query, res["documents"], res["metadatas"])
-    llm = get_llm_client()
-    answer = llm.complete(prompt)
-    tracker.record_llm(answer.model, answer.input_tokens, answer.output_tokens)
+    chat_client = build_chat_client()
+    answer = chat_complete(chat_client, prompt, model=model, tracker=tracker)
 
     latency_s = time.monotonic() - t0
 
@@ -176,6 +185,7 @@ def cmd_query(
         cost_usd=tracker.total_usd(),
         input_tokens=answer.input_tokens,
         output_tokens=answer.output_tokens,
+        console_override=console,
     )
     console.print(f"[bold]Latency:[/bold] {latency_s:.2f}s")
 
@@ -191,7 +201,10 @@ def cmd_query(
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="tier-1-naive",
-        description="Tier 1 (Naive RAG) — ChromaDB + OpenAI embeddings + Gemini chat.",
+        description=(
+            "Tier 1 (Naive RAG) — ChromaDB + OpenRouter embeddings + "
+            "OpenRouter chat (configurable via --model)."
+        ),
     )
     parser.add_argument(
         "--ingest", action="store_true",
@@ -209,6 +222,16 @@ def _build_parser() -> argparse.ArgumentParser:
         "--reset", action="store_true",
         help="Wipe the collection before --ingest.",
     )
+    parser.add_argument(
+        "--model", type=str, default=DEFAULT_CHAT_MODEL,
+        help=(
+            "OpenRouter chat model slug (default %(default)s). Examples: "
+            "anthropic/claude-haiku-4.5, openai/gpt-4o-mini, "
+            "google/gemini-2.5-pro. Browse https://openrouter.ai/models. "
+            "The model must be present in shared.pricing.PRICES for cost "
+            "tracking — extend that table when adopting a new model."
+        ),
+    )
     return parser
 
 
@@ -216,19 +239,21 @@ def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     console = Console()
 
-    # Friendly fast-fail for the OPENAI_API_KEY=None case (Pitfall 10).
+    # Friendly fast-fail for the OPENROUTER_API_KEY=None case (Pitfall 10).
     settings = get_settings()
-    if settings.openai_api_key is None:
+    if settings.openrouter_api_key is None:
         console.print(
-            "[red]OPENAI_API_KEY required for Tier 1 (embeddings). "
+            "[red]OPENROUTER_API_KEY required for Tier 1 (chat + embeddings). "
             "Copy .env.example to .env and set your key from "
-            "https://platform.openai.com/api-keys[/red]"
+            "https://openrouter.ai/keys[/red]"
         )
         return 2
 
     tracker = CostTracker("tier-1")
 
-    # Default behavior (no flags): auto-ingest if empty, then run DEFAULT_QUERY.
+    # Default behavior (no flags except --model): auto-ingest if empty, then
+    # run DEFAULT_QUERY. The presence of --model alone should NOT suppress
+    # the canned demo, so it is excluded from the no-flags check.
     no_flags = not (args.ingest or args.query or args.reset)
     if no_flags:
         args.ingest = True  # auto-ingest only if empty (cmd_ingest is idempotent)
@@ -241,7 +266,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.query:
         return cmd_query(
-            query=args.query, top_k=args.top_k, tracker=tracker, console=console
+            query=args.query,
+            top_k=args.top_k,
+            model=args.model,
+            tracker=tracker,
+            console=console,
         )
 
     return 0
