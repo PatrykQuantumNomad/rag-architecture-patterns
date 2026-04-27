@@ -66,11 +66,16 @@ async def ingest_pdfs(
         pdf = dataset_root / "papers" / p["filename"]
         if not pdf.exists():
             continue
+        # NOTE: ``parser`` is set on ``RAGAnythingConfig`` at build time
+        # (rag.py); raganything==1.2.10's ``process_document_complete`` does
+        # NOT accept ``parser=`` as a kwarg — it forwards **kwargs to
+        # ``MineruParser._run_mineru_command`` which raises TypeError on
+        # unexpected kwargs (Rule 1 bug discovered during Plan 130-05 live
+        # test). ``device`` IS accepted (passed through to mineru CLI ``-d``).
         await rag.process_document_complete(
             file_path=str(pdf),
             output_dir=str(Path("tier-4-multimodal/output") / p["paper_id"]),
             parse_method="auto",
-            parser=parser,
             device=device,
             doc_id=p["paper_id"],  # stable id — RAG-Anything dedups; without it, every run re-extracts (anti-pattern)
         )
