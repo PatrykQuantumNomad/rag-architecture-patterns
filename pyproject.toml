@@ -16,9 +16,9 @@ dependencies = []
 # ``tier_1_naive``, ``tier_2_managed``, ``tier_3_graph``, and
 # ``tier_4_multimodal`` are importable shim packages that re-export modules
 # from the hyphenated ``tier-1-naive/`` / ``tier-2-managed/`` /
-# ``tier-3-graph/`` / ``tier-4-multimodal/`` directories (hyphens are not
-# valid Python identifiers).
-packages = ["shared", "scripts", "tier_1_naive", "tier_2_managed", "tier_3_graph", "tier_4_multimodal"]
+# ``tier-3-graph/`` / ``tier-4-multimodal/`` / ``tier-5-agentic/``
+# directories (hyphens are not valid Python identifiers).
+packages = ["shared", "scripts", "tier_1_naive", "tier_2_managed", "tier_3_graph", "tier_4_multimodal", "tier_5_agentic"]
 
 [project.optional-dependencies]
 shared = [
