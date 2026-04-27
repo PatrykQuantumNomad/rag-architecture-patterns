@@ -231,3 +231,7 @@ rag_anything_storage/
 tier-4-multimodal/.cache/
 tier-4-multimodal/output/
 
+# Phase 131 Evaluation harness intermediates (regenerable from costs/ + queries/ + metrics/)
+evaluation/results/queries/
+evaluation/results/metrics/
+

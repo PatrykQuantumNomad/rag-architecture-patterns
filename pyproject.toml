@@ -18,7 +18,7 @@ dependencies = []
 # from the hyphenated ``tier-1-naive/`` / ``tier-2-managed/`` /
 # ``tier-3-graph/`` / ``tier-4-multimodal/`` / ``tier-5-agentic/``
 # directories (hyphens are not valid Python identifiers).
-packages = ["shared", "scripts", "tier_1_naive", "tier_2_managed", "tier_3_graph", "tier_4_multimodal", "tier_5_agentic"]
+packages = ["shared", "scripts", "tier_1_naive", "tier_2_managed", "tier_3_graph", "tier_4_multimodal", "tier_5_agentic", "evaluation"]
 
 [project.optional-dependencies]
 shared = [
@@ -60,6 +60,14 @@ tier-5 = [
   "openai-agents[litellm]==0.14.6",
   "chromadb>=1.5.8,<2",
   "openai>=1.50,<3",
+]
+evaluation = [
+  "rag-architecture-patterns[shared]",
+  "ragas>=0.4.3,<0.5",
+  "langchain-openai>=0.2,<0.4",
+  "langchain-community>=0.4,<0.5",
+  "litellm>=1.0,<2",
+  "datasets>=4.0",
 ]
 
 [dependency-groups]
