@@ -25,10 +25,17 @@ Locked invariants
 * All ``os.environ["OPENROUTER_API_KEY"]`` reads happen INSIDE the async
   closures so the module imports cleanly without the key set (lazy env
   read; mirrors Phase 129 Plan 03 ``tier-3-graph/rag.py``).
+* Cost capture: ``build_rag(llm_token_tracker=adapter)`` threads the same
+  adapter through BOTH the LLM/vision closure path AND the embedding
+  closure (Phase 129 Plan 03 Outcome A — lightrag-hku==1.4.15
+  ``openai_complete_if_cache`` + ``openai_embed`` both accept
+  ``token_tracker=`` and call ``add_usage(...)``). Plan 130-03 wires this
+  via ``main.py``.
 """
 from __future__ import annotations
 
 import os
+from typing import Any
 
 from raganything import RAGAnything, RAGAnythingConfig
 from lightrag.llm.openai import openai_complete_if_cache, openai_embed
@@ -49,43 +56,44 @@ EMBED_MAX_TOKENS = 8192
 
 
 # ----------------------------------------------------------------------------
-# OpenRouter-routed async closures
+# OpenRouter-routed async closures (factory variants accept token_tracker)
 # ----------------------------------------------------------------------------
 
 
-async def _llm_func(
-    prompt,
-    system_prompt=None,
-    history_messages=None,
-    keyword_extraction=False,
-    model=None,
-    **kwargs,
-):
-    """Text-only LLM closure routed through OpenRouter."""
-    return await openai_complete_if_cache(
-        model or os.environ.get("TIER4_LLM_MODEL", DEFAULT_LLM_MODEL),
+def _make_llm_func(model: str | None, token_tracker: Any | None):
+    """Build the text-only LLM closure with optional ``token_tracker``.
+
+    Mirrors Phase 129 Plan 03 ``tier-3-graph/rag.py::_make_llm_func`` —
+    factory pattern lets the model + tracker be late-bound at ``build_rag``
+    time without baking them into module-level globals.
+    """
+
+    async def _llm_func(
         prompt,
-        system_prompt=system_prompt,
-        history_messages=history_messages or [],
-        api_key=os.environ["OPENROUTER_API_KEY"],
-        base_url=OPENROUTER_BASE,
-        keyword_extraction=keyword_extraction,
+        system_prompt=None,
+        history_messages=None,
+        keyword_extraction=False,
         **kwargs,
-    )
+    ):
+        return await openai_complete_if_cache(
+            model or os.environ.get("TIER4_LLM_MODEL", DEFAULT_LLM_MODEL),
+            prompt,
+            system_prompt=system_prompt,
+            history_messages=history_messages or [],
+            api_key=os.environ["OPENROUTER_API_KEY"],
+            base_url=OPENROUTER_BASE,
+            keyword_extraction=keyword_extraction,
+            token_tracker=token_tracker,
+            **kwargs,
+        )
+
+    return _llm_func
 
 
-async def _vision_func(
-    prompt,
-    system_prompt=None,
-    history_messages=None,
-    image_data=None,
-    messages=None,
-    model=None,
-    **kwargs,
-):
-    """Vision LLM closure with the two-shape contract (Pitfall 3).
+def _make_vision_func(model: str | None, token_tracker: Any | None):
+    """Build the vision LLM closure with the two-shape contract (Pitfall 3).
 
-    RAG-Anything calls this in two distinct shapes:
+    RAG-Anything calls vision in two distinct shapes:
 
     * ``messages=[...]`` — pre-baked OpenAI chat-completions message list
       (used during multimodal LLM cache reuse).
@@ -96,45 +104,70 @@ async def _vision_func(
     If neither is provided, fall back to the text-only path so callers that
     accidentally invoke ``vision_model_func`` for a text prompt still work.
     """
-    if messages:
-        return await openai_complete_if_cache(
-            model or DEFAULT_VISION_MODEL,
-            "",
-            messages=messages,
-            api_key=os.environ["OPENROUTER_API_KEY"],
-            base_url=OPENROUTER_BASE,
-            **kwargs,
-        )
-    if image_data:
-        msg = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt or "Describe this image."},
-                    {"type": "image_url", "image_url": {"url": image_data}},
-                ],
-            }
-        ]
-        return await openai_complete_if_cache(
-            model or DEFAULT_VISION_MODEL,
-            "",
-            messages=msg,
-            api_key=os.environ["OPENROUTER_API_KEY"],
-            base_url=OPENROUTER_BASE,
-            **kwargs,
-        )
-    # No image — degrade gracefully to the text-only LLM closure.
-    return await _llm_func(prompt, system_prompt, history_messages, **kwargs)
+    text_only = _make_llm_func(model=model, token_tracker=token_tracker)
+
+    async def _vision_func(
+        prompt,
+        system_prompt=None,
+        history_messages=None,
+        image_data=None,
+        messages=None,
+        **kwargs,
+    ):
+        if messages:
+            return await openai_complete_if_cache(
+                model or DEFAULT_VISION_MODEL,
+                "",
+                messages=messages,
+                api_key=os.environ["OPENROUTER_API_KEY"],
+                base_url=OPENROUTER_BASE,
+                token_tracker=token_tracker,
+                **kwargs,
+            )
+        if image_data:
+            msg = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt or "Describe this image."},
+                        {"type": "image_url", "image_url": {"url": image_data}},
+                    ],
+                }
+            ]
+            return await openai_complete_if_cache(
+                model or DEFAULT_VISION_MODEL,
+                "",
+                messages=msg,
+                api_key=os.environ["OPENROUTER_API_KEY"],
+                base_url=OPENROUTER_BASE,
+                token_tracker=token_tracker,
+                **kwargs,
+            )
+        # No image — degrade gracefully to the text-only LLM closure.
+        return await text_only(prompt, system_prompt, history_messages, **kwargs)
+
+    return _vision_func
 
 
-async def _embed_func(texts):
-    """Embedding closure routed through OpenRouter."""
-    return await openai_embed(
-        texts,
-        model=DEFAULT_EMBED_MODEL,
-        api_key=os.environ["OPENROUTER_API_KEY"],
-        base_url=OPENROUTER_BASE,
-    )
+def _make_embed_func(token_tracker: Any | None):
+    """Build the embedding closure threaded with optional ``token_tracker``.
+
+    Phase 129 Plan 03 probe-validated that lightrag-hku==1.4.15's
+    ``openai_embed`` accepts ``token_tracker=`` and calls ``add_usage(...)``
+    after each batch (with no ``completion_tokens`` key — the
+    ``CostAdapter`` dispatches that case to ``record_embedding``).
+    """
+
+    async def _embed_func(texts):
+        return await openai_embed(
+            texts,
+            model=DEFAULT_EMBED_MODEL,
+            api_key=os.environ["OPENROUTER_API_KEY"],
+            base_url=OPENROUTER_BASE,
+            token_tracker=token_tracker,
+        )
+
+    return _embed_func
 
 
 # ----------------------------------------------------------------------------
@@ -142,8 +175,26 @@ async def _embed_func(texts):
 # ----------------------------------------------------------------------------
 
 
-def build_rag(working_dir: str = WORKING_DIR) -> RAGAnything:
+def build_rag(
+    working_dir: str = WORKING_DIR,
+    llm_token_tracker: Any | None = None,
+    model: str | None = None,
+) -> RAGAnything:
     """Construct a RAG-Anything instance with the locked Tier 4 contract.
+
+    Parameters
+    ----------
+    working_dir
+        Where RAG-Anything (and its embedded LightRAG) persists graph + KV
+        stores. Defaults to ``rag_anything_storage/tier-4-multimodal``.
+    llm_token_tracker
+        Optional ``CostAdapter`` (or anything with ``.add_usage(dict)``).
+        Threaded into BOTH the LLM/vision closures AND the embedding
+        closure so every LightRAG-driven LLM/embed call records cost.
+        Pass ``None`` in tests where you don't want cost recording.
+    model
+        Override the default LLM/vision model slug. Otherwise the closure
+        reads ``$TIER4_LLM_MODEL`` and falls back to ``DEFAULT_LLM_MODEL``.
 
     Notes
     -----
@@ -164,11 +215,25 @@ def build_rag(working_dir: str = WORKING_DIR) -> RAGAnything:
     )
     return RAGAnything(
         config=config,
-        llm_model_func=_llm_func,
-        vision_model_func=_vision_func,
+        llm_model_func=_make_llm_func(model=model, token_tracker=llm_token_tracker),
+        vision_model_func=_make_vision_func(
+            model=model, token_tracker=llm_token_tracker
+        ),
         embedding_func=EmbeddingFunc(
             embedding_dim=EMBED_DIMS,
             max_token_size=EMBED_MAX_TOKENS,
-            func=_embed_func,
+            func=_make_embed_func(token_tracker=llm_token_tracker),
         ),
     )
+
+
+__all__ = [
+    "build_rag",
+    "WORKING_DIR",
+    "OPENROUTER_BASE",
+    "DEFAULT_LLM_MODEL",
+    "DEFAULT_VISION_MODEL",
+    "DEFAULT_EMBED_MODEL",
+    "EMBED_DIMS",
+    "EMBED_MAX_TOKENS",
+]
