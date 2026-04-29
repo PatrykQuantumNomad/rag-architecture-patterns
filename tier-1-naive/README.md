@@ -111,7 +111,7 @@ PDF
                                     └─> render_query_result + Latency:
 ```
 
-All stages are direct API calls — **no LangChain, no LlamaIndex, no framework**. The whole tier is ~600 lines across `ingest.py`, `embed_openai.py`, `chat.py`, `store.py`, `retrieve.py`, `prompt.py`, and `main.py`. The OpenAI Python SDK does double duty: it speaks to OpenRouter for both embeddings and chat by overriding `base_url` to `https://openrouter.ai/api/v1`. Higher tiers will introduce frameworks where they earn their keep.
+All stages are direct API calls (no LangChain, no LlamaIndex, no framework). The whole tier is roughly 600 lines spread across seven small modules (`ingest.py`, `embed_openai.py`, `chat.py`, `store.py`, `retrieve.py`, `prompt.py`, and `main.py`). The OpenAI Python SDK does double duty: it speaks to OpenRouter for both embeddings and chat by overriding `base_url` to `https://openrouter.ai/api/v1`. Higher tiers will introduce frameworks where they earn their keep.
 
 ---
 
