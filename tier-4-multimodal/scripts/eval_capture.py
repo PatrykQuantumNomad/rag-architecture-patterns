@@ -93,6 +93,10 @@ async def _capture(args, console: Console) -> int:
     tracker = CostTracker("tier-4-eval")
     adapter = CostAdapter(tracker, DEFAULT_LLM_MODEL, DEFAULT_EMBED_MODEL)
     rag = build_rag(llm_token_tracker=adapter)
+    # query-only path: aquery does NOT auto-init lightrag (process_file
+    # / aquery_with_multimodal do). Without this, every aquery raises
+    # ValueError("No LightRAG instance available...").
+    await rag._ensure_lightrag_initialized()
 
     records: list[EvalRecord] = []
     for i, q in enumerate(qa):
