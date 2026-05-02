@@ -115,6 +115,14 @@ def _build_judge(judge_model: str, judge_emb: str):
 
     llm = llm_factory(judge_model, provider="litellm", client=litellm.completion)
     emb = embedding_factory("litellm", model=judge_emb)
+    # RAGAS 0.4.3's LiteLLMEmbeddings exposes embed_text / aembed_text but some
+    # metric internals (e.g. context_precision retrieval scoring) still call the
+    # legacy embed_query / aembed_query API and raise AttributeError. Alias the
+    # missing methods on the instance so scoring doesn't drop those rows.
+    if not hasattr(emb, "embed_query"):
+        emb.embed_query = emb.embed_text  # type: ignore[attr-defined]
+    if not hasattr(emb, "aembed_query"):
+        emb.aembed_query = emb.aembed_text  # type: ignore[attr-defined]
     return llm, emb
 
 
@@ -226,7 +234,14 @@ async def score_query_log(
             )
 
     # Token usage summary — defensive about API surface drift across 0.4.x patches.
-    usage = result.total_tokens() if hasattr(result, "total_tokens") else None
+    # ragas.cost.CostCallbackHandler.total_tokens() raises IndexError when its
+    # internal usage_data list is empty (no judge call piped through the
+    # token-usage parser). Treat that as "no usage recorded" rather than aborting
+    # the whole tier and losing scores already computed in `result`.
+    try:
+        usage = result.total_tokens() if hasattr(result, "total_tokens") else None
+    except (IndexError, AttributeError):
+        usage = None
     in_tok = int(getattr(usage, "input_tokens", 0) or 0) if usage else 0
     out_tok = int(getattr(usage, "output_tokens", 0) or 0) if usage else 0
 
