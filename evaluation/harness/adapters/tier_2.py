@@ -86,7 +86,7 @@ async def run_tier2(
             error="missing_gemini_api_key",
         )
 
-    client = genai.Client(api_key=settings.gemini_api_key)
+    client = genai.Client(api_key=settings.gemini_api_key.get_secret_value())
 
     t0 = time.monotonic()
     # Sync underlying call — wrap to keep harness loop yielding (Pitfall 5).
