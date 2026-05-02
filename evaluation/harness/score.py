@@ -115,14 +115,21 @@ def _build_judge(judge_model: str, judge_emb: str):
 
     llm = llm_factory(judge_model, provider="litellm", client=litellm.completion)
     emb = embedding_factory("litellm", model=judge_emb)
-    # RAGAS 0.4.3's LiteLLMEmbeddings exposes embed_text / aembed_text but some
-    # metric internals (e.g. context_precision retrieval scoring) still call the
-    # legacy embed_query / aembed_query API and raise AttributeError. Alias the
-    # missing methods on the instance so scoring doesn't drop those rows.
+    # RAGAS 0.4.3's LiteLLMEmbeddings exposes embed_text / embed_texts (and
+    # async variants) but some metric internals still call the legacy
+    # LangChain-compat names embed_query / embed_documents. Observed missing
+    # methods raised AttributeError mid-evaluation:
+    #   - context_precision -> embed_query (single text)
+    #   - answer_relevancy  -> embed_documents (list of texts)
+    # Alias all four legacy names on the instance so scoring doesn't drop rows.
     if not hasattr(emb, "embed_query"):
         emb.embed_query = emb.embed_text  # type: ignore[attr-defined]
     if not hasattr(emb, "aembed_query"):
         emb.aembed_query = emb.aembed_text  # type: ignore[attr-defined]
+    if not hasattr(emb, "embed_documents"):
+        emb.embed_documents = emb.embed_texts  # type: ignore[attr-defined]
+    if not hasattr(emb, "aembed_documents"):
+        emb.aembed_documents = emb.aembed_texts  # type: ignore[attr-defined]
     return llm, emb
 
 
