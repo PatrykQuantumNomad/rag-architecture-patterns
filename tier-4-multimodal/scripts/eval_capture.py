@@ -93,7 +93,6 @@ async def _capture(args, console: Console) -> int:
     tracker = CostTracker("tier-4-eval")
     adapter = CostAdapter(tracker, DEFAULT_LLM_MODEL, DEFAULT_EMBED_MODEL)
     rag = build_rag(llm_token_tracker=adapter)
-    await rag.initialize_storages()
 
     records: list[EvalRecord] = []
     for i, q in enumerate(qa):
