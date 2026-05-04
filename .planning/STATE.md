@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 1 Plan 01 complete — Tier 5 adapter walk + tracing toggle landed
-last_updated: "2026-05-04T14:42:15Z"
-last_activity: 2026-05-04 — Phase 01 Plan 01 executed (Tier 5 adapter fix RED+GREEN)
+stopped_at: Phase 1 Plan 03 complete — fallback scaffolding (debug-tier5 extra + diagnostics module + runbook) landed
+last_updated: "2026-05-04T14:51:01Z"
+last_activity: 2026-05-04 — Phase 01 Plan 03 executed (debug-tier5 extra + FallbackLog + fallback runbook)
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
-  percent: 11
+  completed_plans: 2
+  percent: 22
 ---
 
 # Project State
@@ -26,29 +26,29 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 1 of 9 (Tier 5 Adapter Fix)
-Plan: 2 of 3 in current phase (Plan 01 complete; Plan 02 next)
+Plan: Plan 01 complete; Plan 03 complete (Wave 2 — parallel with Plan 02). Plan 02 status owned by its executor.
 Status: In progress
-Last activity: 2026-05-04 — Phase 01 Plan 01 executed (Tier 5 adapter walk + tracing toggle)
+Last activity: 2026-05-04 — Phase 01 Plan 03 executed (debug-tier5 extra + FallbackLog + fallback runbook)
 
-Progress: [█░░░░░░░░░] 11%
+Progress: [██░░░░░░░░] 22%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 1
-- Average duration: 8 min
-- Total execution time: 0.13 hours
+- Total plans completed: 2
+- Average duration: 6 min
+- Total execution time: 0.20 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-tier-5-adapter-fix | 1 | 8 min | 8 min |
+| 01-tier-5-adapter-fix | 2 | 12 min | 6 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (8 min)
+- Last 5 plans: 01-01 (8 min), 01-03 (4 min)
 - Trend: -
 
 *Updated after each plan completion*
@@ -67,6 +67,9 @@ Recent decisions affecting current work:
 - Tier 5 adapter reads `item.output` not `item.raw_item` (Pitfall 1 of 132-RESEARCH HARD invariant) — `raw_item` is a stringified Responses-API payload
 - Tier 5 contexts deduped first-occurrence-wins on `(paper_id, page)` for chunks and `(paper_id)` for metadata abstracts
 - Tier 5 tracing toggle gated on `RAG_DEBUG_TIER5_TRACING` env var (default disabled — byte-identical behavior; opt-in for OpenInference fallback)
+- `[debug-tier5]` extra is opt-in only (CLEANUP-02 of REQUIREMENTS.md v1.1) — default `uv sync` does NOT install OpenInference / Phoenix / OpenTelemetry; `uv sync --extra debug-tier5` activates the diagnostic stack on demand (D-09)
+- Fallback log persistence (`FallbackLog`) reuses `model_dump_json(indent=2)` and `_git_sha` / `_ts` / `_ts_for_filename` helpers from `evaluation.harness.run` — single source of truth for SHA + ISO 8601 Z conventions
+- Fallback runbook encodes D-06 instrument-first ordering verbatim (Phoenix spans first, STACK.md mutations second); `bump_openai_agents` is LAST RESORT requiring user authorization via `checkpoint:decision`
 
 ### Pending Todos
 
@@ -92,6 +95,6 @@ Items acknowledged and carried forward as v1.1+:
 
 ## Session Continuity
 
-Last session: 2026-05-04T14:42:15Z
-Stopped at: Phase 01 Plan 01 complete — Tier 5 adapter walk + tracing toggle landed (commits 90a5771, baaa573)
-Resume file: .planning/phases/01-tier-5-adapter-fix/01-02-PLAN.md
+Last session: 2026-05-04T14:51:01Z
+Stopped at: Phase 01 Plan 03 complete — fallback scaffolding landed (commits 4be0f0a, 3e8c601, 99e02b0). Plan 01-02 ran in parallel; its status is owned by that executor's SUMMARY.md.
+Resume file: .planning/phases/01-tier-5-adapter-fix/01-02-PLAN.md (or next phase if 01-02 also complete)
