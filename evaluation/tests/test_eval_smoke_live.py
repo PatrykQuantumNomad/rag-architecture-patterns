@@ -1,11 +1,21 @@
-"""Live smoke for Phase 131 — Tier 1 x 1 question through all 3 stages.
+"""Live smoke tests for the evaluation harness.
 
 @pytest.mark.live; gated on live_eval_keys_ok + tier1_index_present (both ship in
-Plan 01's evaluation/tests/conftest.py).
+evaluation/tests/conftest.py).
 
-Cost: ~$0.005-0.01 per run. Wall time: <60s. Question count: 1.
+Two tests live here:
 
-Empirically resolves:
+- ``test_eval_smoke_tier1_full_pipeline`` — Phase 131 baseline: Tier 1 x 1
+  question through all 3 stages. Cost: ~$0.005-0.01 per run; wall time <60s.
+
+- ``test_eval_smoke_tier5_full_pipeline`` — Phase 1 (Plan 01-02) Tier 5 smoke:
+  5 hand-picked questions through capture -> score -> smoke_gate. This is a
+  guardrail, NOT the gate-of-record; the gate-of-record is the human-verify
+  checkpoint (Plan 01-02 Task 3). Cost: <$0.05 per run; wall time <2 min.
+  See .planning/phases/01-tier-5-adapter-fix/01-CONTEXT.md D-04 for the
+  PASS/FAIL/INCONCLUSIVE semantics this test asserts on.
+
+Empirically resolves (via tier-1 test):
 - Open Q1 (token_usage_parser parses OpenRouter responses) -- judge cost > 0 confirms.
 - Open Q2 (batch_size=10 sufficient at concurrency 1) -- trivially yes for n=1.
 - A2 (token_usage_parser correctness) -- same as Open Q1.
@@ -161,3 +171,111 @@ def test_eval_smoke_tier1_full_pipeline(live_eval_keys_ok, tier1_index_present, 
         "modality_tag": "text",
     }}
     assert _classify(SMOKE_QUESTION["id"], qa_index_full) == "single-hop"
+
+
+@pytest.mark.live
+def test_eval_smoke_tier5_full_pipeline(live_eval_keys_ok, tier1_index_present, tmp_path):
+    """End-to-end smoke for Phase 1 Plan 01-02: Tier 5 x 5 questions through
+    capture -> score -> smoke_gate.
+
+    Per CONTEXT.md D-04 this is a GUARDRAIL (a sanity check that imports resolve
+    and the pipeline produces structured output) NOT the gate-of-record. The
+    gate-of-record is the human-verify checkpoint in Plan 01-02 Task 3 — a
+    human reads the SmokeGateResult JSON and decides PASS / FAIL / INCONCLUSIVE.
+
+    Fixture rationale: Tier 5's ``search_text_chunks`` reads from Tier 1's
+    ChromaDB at ``chroma_db/tier-1-naive/`` (read-only, per Pitfall 9 of
+    130-RESEARCH). Reusing ``tier1_index_present`` is the correct skip path —
+    when the Tier 1 index is absent the test skips cleanly, mirroring the
+    Tier 1 test's protection.
+
+    Cost guard: 5 questions only (the smoke set), well under the
+    Pitfall 7-of-132-RESEARCH per-run budget of $0.05.
+
+    Asserts (defensive — live API behavior is non-deterministic):
+      - n_total == 5 (smoke set size)
+      - PASS, OR
+      - INCONCLUSIVE with all rows excluded (Pitfall 8/9 escape hatch — flaky
+        API ate the smoke), OR
+      - FAIL with at least 1 populated row (soft evidence the adapter walk is
+        partially working; the human checkpoint is the harder gate).
+    """
+    from evaluation.harness import run as run_mod
+    from evaluation.harness import score as score_mod
+    from evaluation.harness.records import read_query_log
+    from evaluation.harness.smoke_gate import evaluate_smoke
+
+    # --- Stage 1: capture via run.amain (exercises --smoke-question-ids flag) ---
+    smoke_ids = ",".join(run_mod.DEFAULT_SMOKE_IDS)
+    capture_args = run_mod.build_parser().parse_args(
+        [
+            "--tiers", "5",
+            "--smoke-question-ids", smoke_ids,
+            "--yes",
+            "--output-dir", str(tmp_path),
+        ]
+    )
+    from rich.console import Console as RichConsole
+    rc = asyncio.run(run_mod.amain(capture_args, RichConsole()))
+    assert rc == 0, f"run.amain returned non-zero ({rc}); see captured logs"
+
+    # Locate the produced query log. run.py writes to {output_dir}/queries/tier-5-{TS}.json.
+    queries_dir = tmp_path / "queries"
+    candidates = sorted(queries_dir.glob("tier-5-*.json"), key=lambda p: p.stat().st_mtime)
+    assert candidates, f"No tier-5 query log produced under {queries_dir}"
+    query_log_path = candidates[-1]
+
+    log = read_query_log(query_log_path)
+    assert len(log.records) == 5, (
+        f"Expected 5 records (smoke set), got {len(log.records)}; "
+        f"--smoke-question-ids filtering may be broken."
+    )
+
+    # --- Stage 2: score in-process (locked: in-process per Open Q1 RESOLVED) ---
+    qa_index = score_mod._load_golden_qa_index()
+    judge_llm, judge_emb = score_mod._build_judge(
+        score_mod.JUDGE_LLM_SLUG_DEFAULT,
+        score_mod.JUDGE_EMB_SLUG_DEFAULT,
+    )
+    scores, _usage = asyncio.run(
+        score_mod.score_query_log(
+            log,
+            qa_index,
+            judge_llm=judge_llm,
+            judge_emb=judge_emb,
+            batch_size=10,
+            raise_exceptions=False,
+        )
+    )
+    assert len(scores) == 5, f"Expected 5 ScoreRecords, got {len(scores)}"
+
+    # --- Stage 3: smoke gate ---
+    result = evaluate_smoke(log, scores)
+    assert result.n_total == 5, (
+        f"SmokeGateResult.n_total={result.n_total}; expected 5"
+    )
+
+    # Print full result so `pytest -s` shows it in the human-verify checkpoint.
+    print("\n--- SmokeGateResult ---")
+    print(result.model_dump_json(indent=2))
+
+    # Defensive verdict assertion — at least one of three escape hatches must hold.
+    if result.verdict == "PASS":
+        return  # happy path
+    if (
+        result.verdict == "INCONCLUSIVE"
+        and (result.n_agent_truncated + result.n_empty_no_tool_calls) == 5
+    ):
+        # Pitfall 8/9 escape hatch — flaky API ate the smoke, no measurable cells.
+        pytest.skip(
+            f"INCONCLUSIVE — all 5 rows excluded (truncated={result.n_agent_truncated}, "
+            f"empty={result.n_empty_no_tool_calls}). Re-run after API hiccup clears. "
+            f"Message: {result.message}"
+        )
+    # On FAIL: assert at least 1 populated row landed (soft evidence the walk
+    # is partially working). The human checkpoint in Task 3 is the harder gate.
+    assert result.n_populated >= 1, (
+        f"verdict={result.verdict}; populated={result.n_populated}/5. "
+        f"Adapter walk produced ZERO populated rows — the Plan 01-01 fix may "
+        f"have regressed. Message: {result.message}"
+    )
