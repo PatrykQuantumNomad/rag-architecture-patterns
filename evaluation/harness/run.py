@@ -47,6 +47,18 @@ from evaluation.harness.records import EvalRecord, QueryLog, write_query_log
 # Adapter dispatch (lazy-imported per tier requested to avoid pulling unused deps)
 SUPPORTED_TIERS = {1, 2, 3, 4, 5}
 
+# Locked by .planning/phases/01-tier-5-adapter-fix/01-CONTEXT.md D-03 / D-04.
+# Same 5 IDs reused across Phase 1 (Tier 5 smoke), Phase 2 (Tier 4 smoke),
+# and any future regressions. 3 single-hop + 2 multi-hop, no multimodal —
+# Tier 5 retrieves from text-only ChromaDB.
+DEFAULT_SMOKE_IDS: tuple[str, ...] = (
+    "single-hop-001",
+    "single-hop-002",
+    "single-hop-003",
+    "multi-hop-001",
+    "multi-hop-002",
+)
+
 # Cost ballpark per tier per question (USD), used for the cost-surprise gate.
 # Sourced from Phase 128/129/130 live test SUMMARYs:
 #   Tier 1 — ~$0.0001/q (Phase 128-06 live: $0.001 / 8 calls ≈ $0.000125; conservative)
@@ -277,6 +289,18 @@ async def amain(args, console: Console) -> int:
         return code
 
     qa = _load_golden_qa()
+
+    # Phase 1/2 smoke filter (D-03 / D-04). Filters BEFORE --limit so that the
+    # smoke 5 are deterministic regardless of the slice.
+    if args.smoke_question_ids:
+        wanted = [s.strip() for s in args.smoke_question_ids.split(",") if s.strip()]
+        by_id = {q["id"]: q for q in qa}
+        missing = [w for w in wanted if w not in by_id]
+        if missing:
+            console.print(f"[red]Unknown question ids: {missing}[/red]")
+            return 2
+        qa = [by_id[w] for w in wanted]  # preserves user-given order
+
     if args.limit is not None:
         qa = qa[: args.limit]
 
@@ -311,6 +335,15 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=None,
         help="Run only first N questions (default: all 30).",
+    )
+    p.add_argument(
+        "--smoke-question-ids",
+        default=None,
+        help=(
+            "Comma-separated question ids to filter golden_qa.json down to a smoke subset. "
+            f"Phase 1/2 default constant: {','.join(DEFAULT_SMOKE_IDS)}. "
+            "When set, filters BEFORE --limit. Unknown ids exit 2."
+        ),
     )
     p.add_argument(
         "--tier-4-from-cache",
