@@ -200,3 +200,99 @@ def test_cli_help_exits_zero():
     with pytest.raises(SystemExit) as excinfo:
         parser.parse_args(["--help"])
     assert excinfo.value.code == 0
+
+
+def test_default_smoke_ids_constant():
+    """Plan 01-02 D-03: DEFAULT_SMOKE_IDS is a 5-tuple of (3 single-hop + 2 multi-hop)."""
+    from evaluation.harness import run as run_mod
+
+    assert run_mod.DEFAULT_SMOKE_IDS == (
+        "single-hop-001",
+        "single-hop-002",
+        "single-hop-003",
+        "multi-hop-001",
+        "multi-hop-002",
+    )
+
+
+def test_run_smoke_ids_filters_correctly(tmp_path, monkeypatch):
+    """`--smoke-question-ids c,a` filters golden_qa to those 2 questions in user-supplied order."""
+    from evaluation.harness import run as run_mod
+
+    monkeypatch.setattr(run_mod, "_REPO_ROOT", tmp_path)
+
+    fake_qa = [
+        {"id": "a", "question": "?a", "expected_answer": "!", "source_papers": [],
+         "modality_tag": "text", "hop_count_tag": "single-hop", "figure_ids": [], "video_ids": []},
+        {"id": "b", "question": "?b", "expected_answer": "!", "source_papers": [],
+         "modality_tag": "text", "hop_count_tag": "single-hop", "figure_ids": [], "video_ids": []},
+        {"id": "c", "question": "?c", "expected_answer": "!", "source_papers": [],
+         "modality_tag": "text", "hop_count_tag": "single-hop", "figure_ids": [], "video_ids": []},
+        {"id": "d", "question": "?d", "expected_answer": "!", "source_papers": [],
+         "modality_tag": "text", "hop_count_tag": "single-hop", "figure_ids": [], "video_ids": []},
+        {"id": "e", "question": "?e", "expected_answer": "!", "source_papers": [],
+         "modality_tag": "text", "hop_count_tag": "single-hop", "figure_ids": [], "video_ids": []},
+    ]
+    monkeypatch.setattr(run_mod, "_load_golden_qa", lambda: fake_qa)
+    monkeypatch.setattr(run_mod, "_check_prereqs", lambda tiers, console: 0)
+
+    captured: dict = {}
+
+    async def fake_capture_tier(tier, qa, args, console):
+        captured["qa"] = qa
+        captured["tier"] = tier
+        return QueryLog(
+            tier=f"tier-{tier}",
+            timestamp="2026-04-27T12:00:00Z",
+            git_sha="abc1234",
+            model="m",
+            records=[],
+        )
+
+    monkeypatch.setattr(run_mod, "_capture_tier", fake_capture_tier)
+
+    args = run_mod.build_parser().parse_args(
+        [
+            "--tiers", "1",
+            "--smoke-question-ids", "c,a",
+            "--yes",
+            "--output-dir", str(tmp_path / "out"),
+        ]
+    )
+    rc = asyncio.run(run_mod.amain(args, _SilentConsole()))
+    assert rc == 0
+    # User-supplied order preserved (c before a)
+    assert [q["id"] for q in captured["qa"]] == ["c", "a"]
+
+
+def test_run_smoke_ids_unknown_returns_2(tmp_path, monkeypatch, capsys):
+    """`--smoke-question-ids c,zzz` returns 2 + prints friendly red error citing 'zzz'."""
+    from evaluation.harness import run as run_mod
+
+    monkeypatch.setattr(run_mod, "_REPO_ROOT", tmp_path)
+
+    fake_qa = [
+        {"id": "a", "question": "?a", "expected_answer": "!", "source_papers": [],
+         "modality_tag": "text", "hop_count_tag": "single-hop", "figure_ids": [], "video_ids": []},
+        {"id": "c", "question": "?c", "expected_answer": "!", "source_papers": [],
+         "modality_tag": "text", "hop_count_tag": "single-hop", "figure_ids": [], "video_ids": []},
+    ]
+    monkeypatch.setattr(run_mod, "_load_golden_qa", lambda: fake_qa)
+    monkeypatch.setattr(run_mod, "_check_prereqs", lambda tiers, console: 0)
+
+    # Use the real Console so the [red] tag rendering reaches captured stdout.
+    from rich.console import Console as RichConsole
+
+    args = run_mod.build_parser().parse_args(
+        [
+            "--tiers", "1",
+            "--smoke-question-ids", "c,zzz",
+            "--yes",
+            "--output-dir", str(tmp_path / "out"),
+        ]
+    )
+    rc = asyncio.run(run_mod.amain(args, RichConsole()))
+    out = capsys.readouterr().out
+    assert rc == 2
+    assert "Unknown question ids" in out
+    assert "zzz" in out

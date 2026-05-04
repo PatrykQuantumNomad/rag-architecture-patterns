@@ -61,6 +61,16 @@ tier-5 = [
   "chromadb>=1.5.8,<2",
   "openai>=1.50,<3",
 ]
+debug-tier5 = [
+  "rag-architecture-patterns[shared]",
+  # Diagnostic stack for Tier 5 empty-contexts triage. CLEANUP-02 of REQUIREMENTS.md v1.1.
+  # Install on demand:  uv sync --extra debug-tier5
+  # Activate via:       export RAG_DEBUG_TIER5_TRACING=1
+  "openinference-instrumentation-openai-agents==1.4.2",
+  "arize-phoenix>=6,<8",
+  "opentelemetry-sdk>=1.30,<2",
+  "opentelemetry-exporter-otlp-proto-http>=1.30,<2",
+]
 evaluation = [
   "rag-architecture-patterns[shared]",
   "ragas>=0.4.3,<0.5",
