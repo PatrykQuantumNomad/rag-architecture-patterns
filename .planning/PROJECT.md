@@ -26,11 +26,13 @@ Produce reproducible, honest numbers for the blog — every claim in the post mu
 
 **v1.0 — Ship eval numbers for the blog:**
 
-- [ ] Diagnose Tier 5 `empty_contexts` root cause (currently 30/30 NaN)
-- [ ] Regenerate clean Tier 4 graphml (Phase 138 cache corrupt; MineRU ingest must run outside the sandbox)
+- [ ] Fix Tier 5 `empty_contexts` adapter bug (`evaluation/harness/adapters/tier_5.py:125` hard-codes `retrieved_contexts=[]`)
+- [ ] Regenerate clean Tier 4 graphml (wipe `rag_anything_storage/tier-4-multimodal/`; MineRU ingest must run outside the sandbox)
+- [ ] Add freeze step + single-command pipeline driver (`evaluation/harness/freeze.py` + `pipeline.py`)
 - [ ] Re-run all 5 tiers on the same date with consistent provenance (single eval-date for the blog)
+- [ ] Multi-judge spot-check on 5 questions × 3 tiers with a different judge model (measure family-bias delta)
 - [ ] Update `evaluation/results/comparison.md` with all 5 tiers fully populated
-- [ ] Produce frozen handoff doc (e.g. `evaluation/results/eval-numbers-v1.23.md`) containing tier rollup, per-question-class breakdown, per-tier provenance, and honest disclaimers — copy-pasteable into the blog repo
+- [ ] Produce frozen handoff doc (`evaluation/results/frozen/eval-numbers-v1.0.md`) containing tier rollup, per-question-class breakdown, per-tier provenance, multi-judge bias delta, and honest disclaimers — copy-pasteable into the blog repo
 
 ### Out of Scope
 
@@ -38,7 +40,7 @@ Produce reproducible, honest numbers for the blog — every claim in the post mu
 - **Adding new questions to the golden set** — 30 is locked (single-hop / multi-hop / multimodal split is the blog's evidence structure)
 - **Statistical-significance testing** — sample size (30 × 5) is too small; magnitude-only is the blog's framing
 - **Consolidating the `tier-N-name/` ↔ `tier_N_name/` folder pairs** — the underscore folders are intentional setuptools shims (Python module names can't contain hyphens); listed as a v1.1+ cleanup candidate
-- **Mitigating self-grading bias** (judge LLM = generation LLM family) — acknowledged in disclaimers; not engineering work for v1.0
+- **Mitigating self-grading bias** (judge LLM = generation LLM family) — acknowledged in disclaimers, not engineered around. *Measurement* of bias via a multi-judge spot-check (5 questions × 3 tiers re-scored with a different judge model) IS in v1.0 scope; full mitigation (re-running everything with multiple judges) is not
 - **Re-architecting evaluation harness, cost-tracker, or shared layer** — minimize new abstractions; v1.0 uses what exists
 
 ## Context
