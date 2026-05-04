@@ -83,28 +83,33 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TIER-01 | Phase [N] | Pending |
-| TIER-02 | Phase [N] | Pending |
-| TIER-03 | Phase [N] | Pending |
-| HARN-01 | Phase [N] | Pending |
-| HARN-02 | Phase [N] | Pending |
-| HARN-03 | Phase [N] | Pending |
-| HARN-04 | Phase [N] | Pending |
-| HARN-05 | Phase [N] | Pending |
-| CAP-01 | Phase [N] | Pending |
-| CAP-02 | Phase [N] | Pending |
-| CAP-03 | Phase [N] | Pending |
-| DOC-01 | Phase [N] | Pending |
-| DOC-02 | Phase [N] | Pending |
-| DOC-03 | Phase [N] | Pending |
-| DOC-04 | Phase [N] | Pending |
-| DOC-05 | Phase [N] | Pending |
+| TIER-01 | Phase 1 | Pending |
+| TIER-02 | Phase 2 | Pending |
+| TIER-03 | Phase 1 + Phase 2 (split: Tier 5 smoke in P1, Tier 4 smoke in P2) | Pending |
+| HARN-01 | Phase 5 | Pending |
+| HARN-02 | Phase 5 | Pending |
+| HARN-03 | Phase 4 | Pending |
+| HARN-04 | Phase 4 | Pending |
+| HARN-05 | Phase 3 | Pending |
+| CAP-01 | Phase 7 | Pending |
+| CAP-02 | Phase 8 | Pending |
+| CAP-03 | Phase 6 | Pending |
+| DOC-01 | Phase 9 | Pending |
+| DOC-02 | Phase 9 | Pending |
+| DOC-03 | Phase 9 | Pending |
+| DOC-04 | Phase 9 | Pending |
+| DOC-05 | Phase 9 | Pending |
 
 **Coverage:**
 - v1.0 requirements: 16 total
-- Mapped to phases: 0 (filled by roadmapper)
-- Unmapped: 16 ⚠️
+- Mapped to phases: 16 ✓
+- Unmapped: 0 ✓
+
+**Mapping notes:**
+- TIER-03 (smoke test) is intentionally split across Phases 1 and 2 because each tier fix needs its own smoke gate before committing to a full rerun. Each phase owns the smoke test for its tier; the requirement is satisfied only when both halves pass.
+- Phase 9 carries all 5 DOC-* requirements because they are inseparable: the frozen doc is one artifact and the requirements are sub-features of that artifact.
+- No requirement is duplicated across phases; no v1.0 requirement is orphaned.
 
 ---
 *Requirements defined: 2026-05-04*
-*Last updated: 2026-05-04 after initial definition*
+*Last updated: 2026-05-04 after roadmap creation (traceability filled in)*
