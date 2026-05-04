@@ -11,7 +11,7 @@ Requirements for the eval-numbers handoff to the external blog repo. Each maps t
 
 Bug fixes that gate every other v1.0 requirement — the eval cannot ship credible numbers until both tiers stop returning 30/30 NaN.
 
-- [ ] **TIER-01**: User can run Tier 5 evaluation and get non-empty `retrieved_contexts` populated by walking `RunResult.new_items` for `ToolCallOutputItem` (replaces the hard-coded `retrieved_contexts=[]` at `evaluation/harness/adapters/tier_5.py:125`)
+- [x] **TIER-01**: User can run Tier 5 evaluation and get non-empty `retrieved_contexts` populated by walking `RunResult.new_items` for `ToolCallOutputItem` (replaces the hard-coded `retrieved_contexts=[]` at `evaluation/harness/adapters/tier_5.py:125`) — completed 2026-05-04 in Phase 01 Plan 01 (commit baaa573)
 - [ ] **TIER-02**: User can regenerate clean Tier 4 graphml from a wiped `rag_anything_storage/tier-4-multimodal/` directory by running MineRU CLI on the host machine (outside the sandbox) and feeding parsed JSON into RAG-Anything ingestion
 - [ ] **TIER-03**: User can verify each tier's fix on a 5-question smoke test before committing to a full 30-question rerun (catches regressions before spending the rerun budget)
 
@@ -83,7 +83,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TIER-01 | Phase 1 | Pending |
+| TIER-01 | Phase 1 | Complete (2026-05-04, commit baaa573) |
 | TIER-02 | Phase 2 | Pending |
 | TIER-03 | Phase 1 + Phase 2 (split: Tier 5 smoke in P1, Tier 4 smoke in P2) | Pending |
 | HARN-01 | Phase 5 | Pending |
