@@ -62,6 +62,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -81,6 +82,13 @@ from tier_4_multimodal.rag import (  # noqa: E402
     WORKING_DIR,
     build_rag,
 )
+
+try:  # noqa: SIM105 — load_dotenv is not strictly required if env is pre-set
+    from dotenv import load_dotenv  # noqa: E402
+
+    load_dotenv(_REPO_ROOT / ".env", override=False)
+except ImportError:
+    pass
 
 
 MINERU_OUTPUT_ROOT = _REPO_ROOT / "tier-4-multimodal" / "output"
@@ -285,6 +293,16 @@ async def amain(args, console: Console) -> int:
         )
         return 2
 
+    # Forward the SecretStr value to process env so the LightRAG closures
+    # in tier_4_multimodal/rag.py see it on first call. pydantic-settings
+    # populates ``settings.openrouter_api_key`` from .env but does NOT
+    # mutate process env automatically (mirrors main.py:287-289). Tests
+    # may stub ``settings`` with a plain string value; handle both.
+    raw_key = settings.openrouter_api_key
+    if hasattr(raw_key, "get_secret_value"):
+        raw_key = raw_key.get_secret_value()
+    os.environ["OPENROUTER_API_KEY"] = str(raw_key)
+
     mineru_output_root = Path(args.mineru_output_root)
     if args.paper_ids:
         paper_ids = [p.strip() for p in args.paper_ids.split(",") if p.strip()]
@@ -330,6 +348,17 @@ async def amain(args, console: Console) -> int:
         tracker, llm_model=DEFAULT_LLM_MODEL, embed_model=DEFAULT_EMBED_MODEL
     )
     rag = build_rag(working_dir=str(RAG_STORAGE), llm_token_tracker=adapter)
+
+    # Bypass RAG-Anything's parser-installed check. The check at
+    # raganything.raganything._ensure_lightrag_initialized:259 runs
+    # ``subprocess.run(["mineru", "--version"])`` on the caller's PATH —
+    # which fails when the venv's ``bin/`` is not on PATH (e.g. when the
+    # script is invoked via ``.venv/bin/python`` directly without a full
+    # shell activate). Setting this flag is safe because
+    # ``insert_content_list`` does NOT invoke the MineRU subprocess
+    # (the content_list is already parsed; we only run LightRAG's
+    # entity-extraction LLM passes + embeddings + vision over it).
+    rag._parser_installation_checked = True
 
     n = await ingest_from_mineru_output(
         rag, mineru_output_root, paper_ids, console
