@@ -37,10 +37,12 @@ from agents.extensions.models.litellm_model import LitellmModel
 from tier_5_agentic.tools import search_text_chunks, lookup_paper_metadata
 
 
-# Pitfall 8 anti-pattern guard: SDK ships with platform tracing on; without
-# an OpenAI tracing key, every run logs warnings/errors. Disable explicitly
-# at module level so the gate fires once on import.
-set_tracing_disabled(disabled=True)
+# Pitfall 8 of 130-RESEARCH preserved: default disabled. The optional
+# [debug-tier5] extra (CLEANUP-02 in REQUIREMENTS.md v1.1) sets
+# RAG_DEBUG_TIER5_TRACING=1 to enable OpenInference span capture without
+# changing default runtime behavior. Env var unset → disabled=True (current
+# byte-identical behavior); env var set to any non-empty value → disabled=False.
+set_tracing_disabled(disabled=not os.environ.get("RAG_DEBUG_TIER5_TRACING"))
 
 
 # Pitfall 10: must start with "openrouter/" — LitellmModel parses the prefix
