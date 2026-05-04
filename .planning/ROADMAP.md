@@ -48,10 +48,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User can run `python -m evaluation.harness.run --tiers 4 --tier-4-from-cache` against 5 smoke-test questions and see populated `retrieved_contexts` in the resulting `queries/tier-4-*.json`
   4. User can confirm the smoke-test 5 questions produce <5/5 `empty_contexts` NaNs (down from 30/30 baseline)
   5. The MineRU + LightRAG + RAG-Anything library versions are recorded so the graph state is reproducible
-**Plans**: 3 plans (2 waves)
-- [ ] 02-01-PLAN.md — Wipe + ingest_from_mineru.py + log_graph_stats.py + provenance manifest (TIER-02)
-- [ ] 02-02-PLAN.md — parse_missing_papers.py + host MineRU top-up checkpoint for 4 missing golden_qa papers (TIER-02)
-- [ ] 02-03-PLAN.md — eval_capture --smoke-question-ids + Tier 4 live smoke test + autonomous capture/score/gate (TIER-03)
+**Plans**: 3 plans (2 waves; 02-02 is a parallel non-blocking track for Phase 7 prep — does NOT gate Phase 2 ship)
+- [ ] 02-01-PLAN.md — Wipe + ingest_from_mineru.py + log_graph_stats.py + provenance manifest (TIER-02; 3 tasks — Task 1 ingest helper, Task 2a stats helper + tests, Task 2b live rebuild + manifest)
+- [ ] 02-02-PLAN.md — parse_missing_papers.py + host MineRU top-up checkpoint for 4 missing golden_qa papers (TIER-02; **parallel non-blocking — Phase 7 prep**, may resolve as `verdict=descoped` without blocking Phase 2 ship)
+- [ ] 02-03-PLAN.md — eval_capture --smoke-question-ids + Tier 4 live smoke test + autonomous capture/score/gate (TIER-03; depends on 02-01 only — smoke-set source papers are in the existing 75-paper cache rebuilt by 02-01)
 
 ### Phase 3: NaN Reason Instrumentation
 **Goal**: Every NaN in per-row RAGAS metrics output carries a structured `nan_reason` so reviewers can distinguish "tier failed to retrieve" from "judge failed to decompose claims" from "Gemini returned malformed JSON".
