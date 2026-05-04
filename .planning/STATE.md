@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 1 Plan 02 — Tasks 1+2 committed (smoke flag + smoke_gate module + live smoke test); awaiting Task 3 human-verify checkpoint
-last_updated: "2026-05-04T14:55:00Z"
-last_activity: 2026-05-04 — Phase 01 Plan 02 Tasks 1+2 executed (--smoke-question-ids, smoke_gate.py, test_eval_smoke_tier5_full_pipeline)
+stopped_at: Phase 1 complete — all 3 plans landed (01-01 adapter walk, 01-02 smoke gate PASS, 01-03 fallback scaffolding); ready for phase verification
+last_updated: "2026-05-04T18:55:00Z"
+last_activity: 2026-05-04 — Phase 01 Plan 02 Task 3 human-verify checkpoint resolved PASS (5/5 measurable populated, ratio 1.00); Tier 5 adapter fix verified end-to-end against live OpenRouter API
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 3
-  completed_plans: 2
-  percent: 22
+  completed_plans: 3
+  percent: 33
 ---
 
 # Project State
@@ -26,29 +26,29 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 1 of 9 (Tier 5 Adapter Fix)
-Plan: Plan 01 complete; Plan 03 complete (Wave 2 — parallel). Plan 02 Tasks 1+2 committed (commits ec0afd5, ad788fc); Task 3 is `checkpoint:human-verify` (blocking) — awaiting user to run live smoke and approve PASS / FAIL / INCONCLUSIVE.
-Status: In progress (paused at human-verify checkpoint)
-Last activity: 2026-05-04 — Phase 01 Plan 02 Tasks 1+2 executed (--smoke-question-ids flag, smoke_gate.py module, test_eval_smoke_tier5_full_pipeline)
+Plan: 3 of 3 in current phase (all complete; phase verification next). Plan 01-01 adapter walk + tracing toggle (commit baaa573), Plan 01-03 fallback scaffolding (commits 4be0f0a/3e8c601/99e02b0/74663a7), Plan 01-02 smoke gate PASS verdict on live API (commits ec0afd5/ad788fc + checkpoint resolution).
+Status: Phase 1 complete (ready for phase verification)
+Last activity: 2026-05-04 — Phase 01 Plan 02 Task 3 human-verify checkpoint resolved PASS (5/5 measurable populated, ratio 1.00); Tier 5 adapter fix verified end-to-end against live OpenRouter API
 
-Progress: [██░░░░░░░░] 22%
+Progress: [███░░░░░░░] 33%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 2
-- Average duration: 6 min
-- Total execution time: 0.20 hours
+- Total plans completed: 3
+- Average duration: ~7 min
+- Total execution time: ~0.37 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-tier-5-adapter-fix | 2 | 12 min | 6 min |
+| 01-tier-5-adapter-fix | 3 | ~22 min | ~7 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (8 min), 01-03 (4 min)
+- Last 5 plans: 01-01 (8 min), 01-03 (4 min), 01-02 (~10 min incl. live smoke + checkpoint)
 - Trend: -
 
 *Updated after each plan completion*
@@ -70,6 +70,9 @@ Recent decisions affecting current work:
 - `[debug-tier5]` extra is opt-in only (CLEANUP-02 of REQUIREMENTS.md v1.1) — default `uv sync` does NOT install OpenInference / Phoenix / OpenTelemetry; `uv sync --extra debug-tier5` activates the diagnostic stack on demand (D-09)
 - Fallback log persistence (`FallbackLog`) reuses `model_dump_json(indent=2)` and `_git_sha` / `_ts` / `_ts_for_filename` helpers from `evaluation.harness.run` — single source of truth for SHA + ISO 8601 Z conventions
 - Fallback runbook encodes D-06 instrument-first ordering verbatim (Phoenix spans first, STACK.md mutations second); `bump_openai_agents` is LAST RESORT requiring user authorization via `checkpoint:decision`
+- Live smoke gate PASS verdict on 2026-05-04 — 5/5 measurable populated, ratio 1.00, all RAGAS metrics non-NaN; Plan 01-03 fallback runbook remains dormant scaffolding for Phase 7 to read
+- Tier 5 retrieved_contexts populated as expected — every entry in all 5 records starts with `[paper_id=`, n_ctx range 4-6, no Python repr leakage (Pitfall 1 of 132-RESEARCH guard intact end-to-end against live API)
+- Capture cost $0.0048 + judge cost $0.00 on the 5-question smoke (well under the $0.05/run Pitfall-7 cost guard); smoke is cheap to re-run for any future regression check
 
 ### Pending Todos
 
@@ -95,6 +98,6 @@ Items acknowledged and carried forward as v1.1+:
 
 ## Session Continuity
 
-Last session: 2026-05-04T14:55:00Z
-Stopped at: Phase 01 Plan 02 — Tasks 1+2 committed (ec0afd5 feat, ad788fc test). Task 3 (`checkpoint:human-verify`, blocking) is awaiting the user to run the live Tier 5 smoke and reply with `approved` / `verdict=FAIL/INCONCLUSIVE` / `regression: <description>`. SUMMARY.md will be written by the continuation agent after the checkpoint resolves.
-Resume file: .planning/phases/01-tier-5-adapter-fix/01-02-PLAN.md (Task 3)
+Last session: 2026-05-04T18:55:00Z
+Stopped at: Phase 1 complete — all 3 plans landed and SUMMARYs written. Plan 01-02 Task 3 (checkpoint:human-verify) resolved PASS on live smoke artifacts at 2026-05-04T18:48:17Z. SmokeGateResult JSON captured in `01-02-SUMMARY.md`. Phase verification (or chain-advance to Phase 2 — Tier 4 Graphml Regeneration) is the next step.
+Resume file: None (Phase 1 wrapped; ready for phase verification or Phase 2 plan-phase)

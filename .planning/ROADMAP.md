@@ -35,8 +35,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. If the smoke test still shows empty contexts, the diagnosis decision tree (simplify schema → switch model slug → bump openai-agents) is followed in order before declaring the fix incomplete
 **Plans**: 3 plans (2 waves)
 - [x] 01-01-PLAN.md — Adapter walk + conditional tracing toggle (TIER-01) — completed 2026-05-04 (commit baaa573)
-- [ ] 01-02-PLAN.md — Smoke flag + smoke gate + live test + human-verify checkpoint (TIER-03)
-- [ ] 01-03-PLAN.md — Fallback scaffolding ([debug-tier5] extra + diagnostics.py + runbook)
+- [x] 01-02-PLAN.md — Smoke flag + smoke gate + live test + human-verify checkpoint (TIER-03) — completed 2026-05-04 (commits ec0afd5, ad788fc; live smoke gate verdict PASS)
+- [x] 01-03-PLAN.md — Fallback scaffolding ([debug-tier5] extra + diagnostics.py + runbook) — completed 2026-05-04 (commits 4be0f0a, 3e8c601, 99e02b0; runbook dormant — smoke PASSed)
 
 ### Phase 2: Tier 4 Graphml Regeneration
 **Goal**: Tier 4 has a clean, verifiable LightRAG graph rebuilt from MineRU-parsed JSON (parsed outside the sandbox per Phase 139 evidence), verified on a 5-question smoke test before any rerun budget is committed.
