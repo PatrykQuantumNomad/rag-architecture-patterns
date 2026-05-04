@@ -12,7 +12,7 @@ Fix two ship-blocker bugs (Tier 5 `empty_contexts`, Tier 4 graphml regen), add a
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Tier 5 Adapter Fix** - Walk `RunResult.new_items` for `ToolCallOutputItem.output` so Tier 5 stops returning 30/30 `empty_contexts`, smoke-tested before any full rerun
+- [x] **Phase 1: Tier 5 Adapter Fix** - Walk `RunResult.new_items` for `ToolCallOutputItem.output` so Tier 5 stops returning 30/30 `empty_contexts`, smoke-tested before any full rerun ✓ 2026-05-04 (smoke PASS 5/5, ratio 1.00)
 - [ ] **Phase 2: Tier 4 Graphml Regeneration** - Wipe `rag_anything_storage/tier-4-multimodal/`, re-ingest from MineRU JSON parsed outside the sandbox, smoke-tested before any full rerun
 - [ ] **Phase 3: NaN Reason Instrumentation** - Distinguish `empty_contexts` vs `empty_statements` vs `json_parse_failure` in per-row metrics output
 - [ ] **Phase 4: Freeze Tool** - `evaluation/harness/freeze.py` writes immutable `frozen/eval-numbers-vX.Y.md` + sidecar manifest with git SHA, capture timestamps, library versions
@@ -135,7 +135,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Tier 5 Adapter Fix | 0/TBD | Not started | - |
+| 1. Tier 5 Adapter Fix | 3/3 | ✓ Verified | 2026-05-04 |
 | 2. Tier 4 Graphml Regeneration | 0/TBD | Not started | - |
 | 3. NaN Reason Instrumentation | 0/TBD | Not started | - |
 | 4. Freeze Tool | 0/TBD | Not started | - |

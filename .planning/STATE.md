@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 1 complete — all 3 plans landed (01-01 adapter walk, 01-02 smoke gate PASS, 01-03 fallback scaffolding); ready for phase verification
-last_updated: "2026-05-04T18:55:00Z"
-last_activity: 2026-05-04 — Phase 01 Plan 02 Task 3 human-verify checkpoint resolved PASS (5/5 measurable populated, ratio 1.00); Tier 5 adapter fix verified end-to-end against live OpenRouter API
+stopped_at: Phase 1 verified passed (4/4 must-haves) — Tier 5 adapter walk landed, smoke PASS, fallback scaffolding dormant; ready for Phase 2 plan-phase
+last_updated: "2026-05-04T19:00:00Z"
+last_activity: 2026-05-04 — Phase 01 verifier returned `passed` (4/4 must-haves verified against live artifacts and source); ROADMAP.md marked complete
 progress:
   total_phases: 9
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
   completed_plans: 3
-  percent: 33
+  percent: 11
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** Produce reproducible, honest numbers for the blog — every claim backed by a captured run with full provenance.
-**Current focus:** Phase 1 (Tier 5 Adapter Fix)
+**Current focus:** Phase 2 (Tier 4 Graphml Regeneration) — next phase to plan
 
 ## Current Position
 
-Phase: 1 of 9 (Tier 5 Adapter Fix)
-Plan: 3 of 3 in current phase (all complete; phase verification next). Plan 01-01 adapter walk + tracing toggle (commit baaa573), Plan 01-03 fallback scaffolding (commits 4be0f0a/3e8c601/99e02b0/74663a7), Plan 01-02 smoke gate PASS verdict on live API (commits ec0afd5/ad788fc + checkpoint resolution).
-Status: Phase 1 complete (ready for phase verification)
-Last activity: 2026-05-04 — Phase 01 Plan 02 Task 3 human-verify checkpoint resolved PASS (5/5 measurable populated, ratio 1.00); Tier 5 adapter fix verified end-to-end against live OpenRouter API
+Phase: 2 of 9 (Tier 4 Graphml Regeneration) — ready to plan
+Plan: - of - in current phase (not yet planned)
+Status: Phase 1 complete and verified (4/4 must-haves passed); Phase 2 ready for `/gsd:plan-phase 2`
+Last activity: 2026-05-04 — Phase 01 verifier returned `passed`; ROADMAP.md marked complete; planning docs committed
 
-Progress: [███░░░░░░░] 33%
+Progress: [█░░░░░░░░░] 11% (1/9 phases complete)
 
 ## Performance Metrics
 
@@ -98,6 +98,6 @@ Items acknowledged and carried forward as v1.1+:
 
 ## Session Continuity
 
-Last session: 2026-05-04T18:55:00Z
-Stopped at: Phase 1 complete — all 3 plans landed and SUMMARYs written. Plan 01-02 Task 3 (checkpoint:human-verify) resolved PASS on live smoke artifacts at 2026-05-04T18:48:17Z. SmokeGateResult JSON captured in `01-02-SUMMARY.md`. Phase verification (or chain-advance to Phase 2 — Tier 4 Graphml Regeneration) is the next step.
-Resume file: None (Phase 1 wrapped; ready for phase verification or Phase 2 plan-phase)
+Last session: 2026-05-04T19:00:00Z
+Stopped at: Phase 1 verified passed (4/4 must-haves). VERIFICATION.md at `.planning/phases/01-tier-5-adapter-fix/01-VERIFICATION.md`. ROADMAP.md updated, planning docs committed. Next: `/gsd:plan-phase 2` for Tier 4 Graphml Regeneration.
+Resume file: None (Phase 1 wrapped; Phase 2 is next)
