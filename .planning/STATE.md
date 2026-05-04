@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 1 Plan 03 complete — fallback scaffolding (debug-tier5 extra + diagnostics module + runbook) landed
-last_updated: "2026-05-04T14:51:01Z"
-last_activity: 2026-05-04 — Phase 01 Plan 03 executed (debug-tier5 extra + FallbackLog + fallback runbook)
+stopped_at: Phase 1 Plan 02 — Tasks 1+2 committed (smoke flag + smoke_gate module + live smoke test); awaiting Task 3 human-verify checkpoint
+last_updated: "2026-05-04T14:55:00Z"
+last_activity: 2026-05-04 — Phase 01 Plan 02 Tasks 1+2 executed (--smoke-question-ids, smoke_gate.py, test_eval_smoke_tier5_full_pipeline)
 progress:
   total_phases: 9
   completed_phases: 0
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 1 of 9 (Tier 5 Adapter Fix)
-Plan: Plan 01 complete; Plan 03 complete (Wave 2 — parallel with Plan 02). Plan 02 status owned by its executor.
-Status: In progress
-Last activity: 2026-05-04 — Phase 01 Plan 03 executed (debug-tier5 extra + FallbackLog + fallback runbook)
+Plan: Plan 01 complete; Plan 03 complete (Wave 2 — parallel). Plan 02 Tasks 1+2 committed (commits ec0afd5, ad788fc); Task 3 is `checkpoint:human-verify` (blocking) — awaiting user to run live smoke and approve PASS / FAIL / INCONCLUSIVE.
+Status: In progress (paused at human-verify checkpoint)
+Last activity: 2026-05-04 — Phase 01 Plan 02 Tasks 1+2 executed (--smoke-question-ids flag, smoke_gate.py module, test_eval_smoke_tier5_full_pipeline)
 
 Progress: [██░░░░░░░░] 22%
 
@@ -95,6 +95,6 @@ Items acknowledged and carried forward as v1.1+:
 
 ## Session Continuity
 
-Last session: 2026-05-04T14:51:01Z
-Stopped at: Phase 01 Plan 03 complete — fallback scaffolding landed (commits 4be0f0a, 3e8c601, 99e02b0). Plan 01-02 ran in parallel; its status is owned by that executor's SUMMARY.md.
-Resume file: .planning/phases/01-tier-5-adapter-fix/01-02-PLAN.md (or next phase if 01-02 also complete)
+Last session: 2026-05-04T14:55:00Z
+Stopped at: Phase 01 Plan 02 — Tasks 1+2 committed (ec0afd5 feat, ad788fc test). Task 3 (`checkpoint:human-verify`, blocking) is awaiting the user to run the live Tier 5 smoke and reply with `approved` / `verdict=FAIL/INCONCLUSIVE` / `regression: <description>`. SUMMARY.md will be written by the continuation agent after the checkpoint resolves.
+Resume file: .planning/phases/01-tier-5-adapter-fix/01-02-PLAN.md (Task 3)
