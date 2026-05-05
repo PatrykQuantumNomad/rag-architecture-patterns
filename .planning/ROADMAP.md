@@ -140,7 +140,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Tier 5 Adapter Fix | 3/3 | ✓ Verified | 2026-05-04 |
-| 2. Tier 4 Graphml Regeneration | 0/3 | Not started | - |
+| 2. Tier 4 Graphml Regeneration | 4/4 | ✓ Verified | 2026-05-05 |
 | 3. NaN Reason Instrumentation | 0/TBD | Not started | - |
 | 4. Freeze Tool | 0/TBD | Not started | - |
 | 5. Pipeline Driver | 0/TBD | Not started | - |
