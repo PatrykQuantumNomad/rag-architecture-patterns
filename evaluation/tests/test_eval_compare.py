@@ -122,6 +122,69 @@ def test_aggregate_tier_with_nan(tmp_path):
     assert abs(row["faithfulness"] - 0.9) < 1e-9
 
 
+def test_aggregate_tier_with_new_reasons(tmp_path):
+    """Plan 03-02 regression: nan_breakdown buckets the NEW Phase 3 reason
+    strings (json_parse_failure, empty_statements) alongside the OLD
+    pre-call reasons (empty_contexts). Proves compare.py needs ZERO
+    modification for HARN-05 — the existing dict iteration at compare.py:110-114
+    is reason-agnostic.
+    """
+    records = [
+        {"question_id": "q1", "question": "?", "answer": "a", "retrieved_contexts": ["c"],
+         "latency_s": 1.0, "cost_usd_at_capture": 0.001, "error": None},
+        {"question_id": "q2", "question": "?", "answer": "a", "retrieved_contexts": ["c"],
+         "latency_s": 1.0, "cost_usd_at_capture": 0.001, "error": None},
+        {"question_id": "q3", "question": "?", "answer": "a", "retrieved_contexts": ["c"],
+         "latency_s": 1.0, "cost_usd_at_capture": 0.001, "error": None},
+        {"question_id": "q4", "question": "?", "answer": "a", "retrieved_contexts": [],
+         "latency_s": 1.0, "cost_usd_at_capture": 0.0, "error": None},
+    ]
+    metrics = [
+        {"question_id": "q1", "faithfulness": 0.9, "answer_relevancy": 0.85,
+         "context_precision": 0.8, "nan_reason": None},
+        {"question_id": "q2", "faithfulness": None, "answer_relevancy": None,
+         "context_precision": None, "nan_reason": "json_parse_failure"},
+        {"question_id": "q3", "faithfulness": None, "answer_relevancy": None,
+         "context_precision": None, "nan_reason": "empty_statements"},
+        {"question_id": "q4", "faithfulness": None, "answer_relevancy": None,
+         "context_precision": None, "nan_reason": "empty_contexts"},
+    ]
+    _seed_results(tmp_path, 1, records, metrics, cost_total_usd=0.003)
+
+    row = aggregate_tier(1, tmp_path)
+    assert row is not None
+    assert row["n"] == 4
+    assert row["n_nan"] == 3
+    assert row["nan_breakdown"] == {
+        "json_parse_failure": 1,
+        "empty_statements": 1,
+        "empty_contexts": 1,
+    }
+    # Only q1 contributes to faithfulness mean
+    assert abs(row["faithfulness"] - 0.9) < 1e-9
+
+    # WARNING 2 closure: ALSO exercise the emit_markdown rendering path so the
+    # Wave 0 gap test_emit_markdown_with_new_reasons is covered. compare.py
+    # iterates SUPPORTED_TIERS zip with tier_rows, so the seeded tier-1 row
+    # must land at index 0 to be rendered.
+    md = emit_markdown(
+        [row, None, None, None, None], [], "j", "e", [], tier_4_present=False,
+    )
+    # New reasons appear in the footer
+    assert "json_parse_failure" in md
+    assert "empty_statements" in md
+    # OLD reason still renders (regression — compare.py:276 is reason-agnostic)
+    assert "empty_contexts" in md
+    # Per-tier breakdown line sorts reasons alphabetically (compare.py:276
+    # `sorted(row["nan_breakdown"].items())`); assert the joined-counts line
+    # for the seeded tier-1 row contains all three counts together.
+    expected_line = "1 empty_contexts, 1 empty_statements, 1 json_parse_failure"
+    assert expected_line in md, (
+        f"Expected joined breakdown line {expected_line!r} in markdown footer; "
+        f"actual footer:\n{md.split(chr(10) + chr(10) + chr(42) + chr(42) + 'NaN breakdown', 1)[-1][:500]}"
+    )
+
+
 def test_aggregate_tier_missing_returns_none(tmp_path):
     """Missing queries log → aggregate_tier returns None (sentinel for placeholder row)."""
     (tmp_path / "queries").mkdir()

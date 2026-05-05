@@ -331,6 +331,7 @@ async def score_query_log(
         return scores, {"input_tokens": 0, "output_tokens": 0, "n_scored": 0}
 
     dataset = EvaluationDataset(samples=[s for _, s in samples_with_index])
+    tracer = NaNReasonTracer()
     result = evaluate(
         dataset=dataset,
         metrics=[faithfulness, answer_relevancy, context_precision],
@@ -340,6 +341,7 @@ async def score_query_log(
         batch_size=batch_size,
         raise_exceptions=raise_exceptions,
         show_progress=True,
+        callbacks=[tracer],  # Plan 03-02: capture per-row exception types for HARN-05
     )
 
     # Map result rows back to original record indices.
@@ -347,22 +349,44 @@ async def score_query_log(
     if df is not None:
         for j, (orig_idx, _) in enumerate(samples_with_index):
             row = df.iloc[j]
+            f = _to_float_or_none(row.get("faithfulness"))
+            ar = _to_float_or_none(row.get("answer_relevancy"))
+            cp = _to_float_or_none(row.get("context_precision"))
+            # Plan 03-02: per-row precedence faithfulness > AR > CP (Pitfall 5 of RESEARCH.md).
+            # First non-None classification wins; None means all metrics scored cleanly.
+            nan_reason = (
+                _classify_post_evaluate_nan(j, "faithfulness", f, tracer)
+                or _classify_post_evaluate_nan(j, "answer_relevancy", ar, tracer)
+                or _classify_post_evaluate_nan(j, "context_precision", cp, tracer)
+            )
             scores[orig_idx] = ScoreRecord(
                 question_id=log.records[orig_idx].question_id,
-                faithfulness=_to_float_or_none(row.get("faithfulness")),
-                answer_relevancy=_to_float_or_none(row.get("answer_relevancy")),
-                context_precision=_to_float_or_none(row.get("context_precision")),
+                faithfulness=f,
+                answer_relevancy=ar,
+                context_precision=cp,
+                nan_reason=nan_reason,
             )
     else:
         # Fallback: result.scores is a list[dict] in some 0.4.x patches.
         rows = getattr(result, "scores", []) or []
         for j, (orig_idx, _) in enumerate(samples_with_index):
             row = rows[j] if j < len(rows) else {}
+            f = _to_float_or_none(row.get("faithfulness"))
+            ar = _to_float_or_none(row.get("answer_relevancy"))
+            cp = _to_float_or_none(row.get("context_precision"))
+            # Plan 03-02: per-row precedence faithfulness > AR > CP (Pitfall 5 of RESEARCH.md).
+            # First non-None classification wins; None means all metrics scored cleanly.
+            nan_reason = (
+                _classify_post_evaluate_nan(j, "faithfulness", f, tracer)
+                or _classify_post_evaluate_nan(j, "answer_relevancy", ar, tracer)
+                or _classify_post_evaluate_nan(j, "context_precision", cp, tracer)
+            )
             scores[orig_idx] = ScoreRecord(
                 question_id=log.records[orig_idx].question_id,
-                faithfulness=_to_float_or_none(row.get("faithfulness")),
-                answer_relevancy=_to_float_or_none(row.get("answer_relevancy")),
-                context_precision=_to_float_or_none(row.get("context_precision")),
+                faithfulness=f,
+                answer_relevancy=ar,
+                context_precision=cp,
+                nan_reason=nan_reason,
             )
 
     # Token usage summary — defensive about API surface drift across 0.4.x patches.
