@@ -63,7 +63,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. User can confirm `evaluation/harness/score.py`'s `_short_circuit_nan()` already-present pattern is extended to tag the new reasons rather than swallowing them as a single `nan_reason="nan"`
   3. User can confirm the rollup in `comparison.md` aggregates NaN counts by reason (e.g., `tier-5: 2 empty_contexts, 1 empty_statements`) rather than a single opaque `n_NaN`
 **Plans**: 3 plans (3 waves; W1 TDD-only pure units, W2 wiring + integration + compare regression, W3 live smoke backstop with checkpoint:human-verify)
-- [ ] 03-01-PLAN.md — TDD red→green for NaNReasonTracer + _classify_post_evaluate_nan pure helpers (HARN-05; type:tdd; 2 tasks)
+- [x] 03-01-PLAN.md — TDD red→green for NaNReasonTracer + _classify_post_evaluate_nan pure helpers (HARN-05; type:tdd; 2 tasks) — **COMPLETE 2026-05-05** (~5 min wall; commits e97e864 RED, bc80825 GREEN; +109 LOC score.py / +253 LOC test_eval_score.py; test count 13→28; all 7 verification gates PASS; HARN-05 closure pending Plan 03-02 wiring)
 - [ ] 03-02-PLAN.md — Wire tracer into score_query_log + integration tests with stub LLMs + compare.py rollup regression test proving zero compare.py change needed (HARN-05; depends_on 03-01)
 - [ ] 03-03-PLAN.md — Live smoke backstop asserting unknown_nan==0 against existing Tier 5 capture; non-autonomous human-verify checkpoint (HARN-05; depends_on 03-02)
 

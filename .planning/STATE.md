@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: "Phase 2 Plan 02-04 complete: gap closure landed for the Plan 02-03 FAIL. Bumped JUDGE_MAX_TOKENS=8192 in score._build_judge (TDD red→green; commits cdbc376 + 7fc6d66), re-scored Tier 4 against existing capture (no re-capture, no graph touch), and confirmed smoke_gate verdict=PASS for BOTH Tier 4 (gap closure target — non_nan_faithfulness_count went 1→5) AND Tier 5 (Phase 1 regression check — byte-identical PASS). Phase 2 ship gate now satisfied at smoke-gate level; ROADMAP success criterion #4 (<5/5 empty_contexts NaNs on smoke) cleared with 0/5 NaNs of any reason. Phase 2 fully delivered (4/4 plans complete)."
-last_updated: "2026-05-05T15:17:00Z"
-last_activity: "2026-05-05 — Phase 02 Plan 02-04 executed end-to-end (~12 min): Task 1 TDD added 2 unit tests (test_build_judge_passes_max_tokens, test_build_judge_max_tokens_is_named_constant) — RED commit cdbc376 verified failing then GREEN commit 7fc6d66 added JUDGE_MAX_TOKENS=8192 module-level constant + threaded max_tokens=JUDGE_MAX_TOKENS into llm_factory call (13/13 tests pass); Task 2 re-scored Tier 4 via score --tiers 4 --yes (5/5 faithfulness=1.0, was 4/5 NaN), Tier 4 smoke gate PASS, Tier 5 smoke gate PASS (Phase 1 regression check intact). Rule-3 deviation: project .gitignore excludes evaluation/results/metrics/ and evaluation/results/costs/*.json so the plan's Step E artifact commit was rolled into the SUMMARY commit with verdict JSON captured verbatim for provenance equivalence."
+stopped_at: "Phase 3 Plan 03-01 complete: NaNReasonTracer(BaseCallbackHandler) + _classify_post_evaluate_nan pure helper landed in evaluation/harness/score.py via TDD red→green (commits e97e864 + bc80825). 15 new unit tests appended (test count 13→28); 109 pure-addition LOC in score.py (no protected function bodies modified — _short_circuit_nan, _to_float_or_none, _build_judge, score_query_log all byte-identical). All 7 verification gates pass. HARN-05 ships in stages: 03-01 = standalone units, 03-02 = wire into score_query_log + integration test, 03-03 = live smoke backstop."
+last_updated: "2026-05-05T17:50:53Z"
+last_activity: "2026-05-05 — Phase 03 Plan 03-01 executed end-to-end (~5 min): Task 1 RED appended 15 tests to evaluation/tests/test_eval_score.py covering 6 NaNReasonTracer scenarios (A-F: ROW-only no-capture, METRIC RagasOutputParserException, METRIC LLMDidNotFinishException, RAGAS_PROMPT inherits via parent walk, two metrics same row, idempotence first-wins) + 8 _classify_post_evaluate_nan branches (G-N: non-NaN→None, captured RagasOutputParserException, captured LLMDidNotFinishException, faithfulness→empty_statements, answer_relevancy→empty_questions, context_precision→invalid_verdicts, unknown metric→unknown_nan+caplog WARNING, captured-unknown-type→falls to semantic) + 1 smoke import test — all 15 fail with ImportError (RED commit e97e864). Task 2 GREEN added imports (logging, BaseCallbackHandler, ChainType, _NAN_REASON_LOG) + NaNReasonTracer class with on_chain_start ChainType-dispatch + on_chain_error idempotent capture + _classify_post_evaluate_nan precedence ladder, placed BETWEEN _short_circuit_nan and _to_float_or_none — all 28 tests pass (commit bc80825). Zero deviations; plan executed exactly as written. Phase 3 progress: 1/3 plans complete; Plan 03-02 will wire tracer into score_query_log."
 progress:
   total_phases: 9
   completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
-  percent: 100
+  total_plans: 10
+  completed_plans: 8
+  percent: 80
 ---
 
 # Project State
@@ -21,25 +21,25 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** Produce reproducible, honest numbers for the blog — every claim backed by a captured run with full provenance.
-**Current focus:** Phase 2 (Tier 4 Graphml Regeneration) — all 4 plans complete; Plan 02-04 gap closure landed both Tier 4 (was FAIL) and Tier 5 (Phase 1 regression check) at verdict=PASS; phase ship gate cleared.
+**Current focus:** Phase 3 (NaN Reason Instrumentation) — Plan 03-01 complete (units shipped via TDD); Plan 03-02 (wiring into score_query_log + integration tests) is next.
 
 ## Current Position
 
-Phase: 2 of 9 (Tier 4 Graphml Regeneration) — COMPLETE (all 4 plans delivered, smoke gate PASS, ship gate cleared)
-Plan: 4 of 4 complete in Phase 2; Plan 02-04 closed the Plan 02-03 smoke FAIL via TDD red→green on score.py max_tokens wiring
-Status: Plan 02-01 landed smoke-only graphml (2886 nodes / 7056 edges, 3 papers); Plan 02-02 top-up MineRU cache to 79 papers (approved, non-blocking); Plan 02-03 deliverables shipped (--smoke-question-ids flag + helper, live smoke test, context-probe API-drift fix) + smoke_gate verdict=FAIL surfaced; Plan 02-04 closed the gap with JUDGE_MAX_TOKENS=8192 in score._build_judge — Tier 4 PASS (5/5 faithfulness=1.0) AND Tier 5 PASS (Phase 1 provenance intact).
-Last activity: 2026-05-05 — Phase 02 Plan 02-04 gap closure: TDD red→green for max_tokens wiring + Tier 4 re-score against existing capture + double smoke gate PASS verdict captured verbatim in 02-04-SUMMARY.md.
+Phase: 3 of 9 (NaN Reason Instrumentation) — IN PROGRESS (1/3 plans delivered)
+Plan: 1 of 3 complete in Phase 3; Plan 03-01 shipped NaNReasonTracer + _classify_post_evaluate_nan as standalone testable units via TDD red→green (offline; no live LLM call required)
+Status: Phase 1+2 fully delivered (7/7 plans, both ship gates cleared at smoke-gate level). Phase 3 Plan 03-01 ships the two new units in isolation with 15 unit tests (all 28 tests pass, 13 existing untouched). Plan 03-02 wires NaNReasonTracer into evaluate(callbacks=[tracer], ...) inside score_query_log and post-processes each row's metrics through _classify_post_evaluate_nan to populate ScoreRecord.nan_reason. Plan 03-03 is the live smoke backstop with a checkpoint:human-verify gate.
+Last activity: 2026-05-05 — Phase 03 Plan 03-01 executed end-to-end (~5 min): TDD red→green for NaNReasonTracer (BaseCallbackHandler subclass) + _classify_post_evaluate_nan (pure post-evaluate classifier with precedence ladder). 15 new tests, 109 LOC additions to score.py, 0 protected function bodies modified.
 
-Progress: [████░░░░░░] 22% phase-level (1/9 phases fully complete by ROADMAP framing; Phase 2 cleared smoke ship gate but not yet flipped to [x] in ROADMAP — orchestrator's call) | 100% plan-level for active phases (7/7 plans across Phases 1+2)
-Phase 2 ship gate is now CLEARED at the smoke-gate level. Both Tier 4 and Tier 5 smoke verdicts are PASS under the same score._build_judge config, so the score.py change is cross-tier-validated.
+Progress: [████████░░] 80% plan-level (8/10 plans across Phases 1+2+Phase-3-Plan-1; Phase 3 has 3 plans, currently 1/3) | 22% phase-level (2/9 phases fully complete: Phase 1 + Phase 2 cleared in ROADMAP; Phase 3 in progress)
+Phase 3 progress: 1/3 plans complete (Plan 03-01 units shipped). HARN-05 closure pending Plan 03-02 wiring + Plan 03-03 live smoke backstop.
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 6
-- Average duration: ~22 min
-- Total execution time: ~2.2 hours
+- Total plans completed: 8
+- Average duration: ~21 min (~169 min total / 8 plans)
+- Total execution time: ~2.8 hours
 
 **By Phase:**
 
@@ -47,11 +47,12 @@ Phase 2 ship gate is now CLEARED at the smoke-gate level. Both Tier 4 and Tier 5
 |-------|-------|-------|----------|
 | 01-tier-5-adapter-fix | 3 | ~22 min | ~7 min |
 | 02-tier-4-graphml-regeneration | 4 | ~142 min (~50 min Plan 02-01 + ~50 min Plan 02-02 host MineRU + ~30 min Plan 02-03 + ~12 min Plan 02-04) | ~36 min |
+| 03-nan-reason-instrumentation | 1 of 3 | ~5 min (Plan 03-01 only) | ~5 min |
 
 **Recent Trend:**
 
-- Last 7 plans: 01-01 (8 min), 01-03 (4 min), 01-02 (~10 min), 02-01 (~50 min), 02-02 (~50 min host MineRU), 02-03 (~30 min Task 1 + Task 2 with 3 capture cycles), 02-04 (~12 min — score-only TDD + re-score + double smoke gate)
-- Trend: live-ingest plans are 5-10× pure-code plans; smoke verification plans (Plan 02-03) sit in between; gap-closure score-only plans (Plan 02-04) are 2-3× pure-code plans (one TDD cycle + one live re-score + two cheap gate calls).
+- Last 8 plans: 01-01 (8 min), 01-03 (4 min), 01-02 (~10 min), 02-01 (~50 min), 02-02 (~50 min host MineRU), 02-03 (~30 min Task 1 + Task 2 with 3 capture cycles), 02-04 (~12 min — score-only TDD + re-score + double smoke gate), 03-01 (~5 min — pure-offline TDD for two coupled units)
+- Trend: live-ingest plans are 5-10× pure-code plans; smoke verification plans (Plan 02-03) sit in between; gap-closure score-only plans (Plan 02-04) are 2-3× pure-code plans; pure-offline TDD-only plans (Plan 03-01) are the cheapest at ~5 min wall (no LLM call, no graph touch, no capture re-run — just RED tests + GREEN implementation + verification gates).
 
 *Updated after each plan completion*
 
@@ -84,6 +85,11 @@ Recent decisions affecting current work:
 - Plan 02-03 smoke verdict: FAIL on faithfulness NaN (4/5 rows). Root cause is RAGAS faithfulness metric's _create_statements step hitting Gemini's 1024-token output cap when extracting atomic claims from long Tier 4 hybrid-mode answers (2011-2575 chars). NOT a Plan 02-01 regression: n_populated=5/5, ratio=1.0, context_precision 5/5 non-NaN, answer_relevancy 5/5 non-NaN, no Python repr leak. Recommended gap-closure: add max_tokens=8192 to score._build_judge's litellm.completion config and re-run score only.
 - Plan 02-04 closed the Plan 02-03 FAIL via the recommended one-line fix: added module-level constant JUDGE_MAX_TOKENS=8192 beside JUDGE_LLM_SLUG_DEFAULT in evaluation/harness/score.py (line 70) and threaded max_tokens=JUDGE_MAX_TOKENS into the llm_factory(...) call inside _build_judge (line 131). Two new unit tests in evaluation/tests/test_eval_score.py monkeypatch ragas.llms.llm_factory + ragas.embeddings.{base.,}embedding_factory and assert the wiring offline (TDD: RED commit cdbc376 → GREEN commit 7fc6d66, all 13 tests pass). Re-scored Tier 4 against existing capture: 5/5 faithfulness=1.0 (was 4/5 NaN). Smoke gate verdict=PASS for Tier 4 (gap closure target) AND Tier 5 (Phase 1 regression check — byte-identical to 2026-05-04 PASS).
 - Plan 02-04 Rule-3 deviation: project .gitignore (set at Phase 131 init) excludes evaluation/results/metrics/ and evaluation/results/costs/*.json as 'regenerable runtime intermediates'. The plan's Step E artifact commit was incompatible with this convention (which Plan 02-03 already followed); adapted to roll Step E into the SUMMARY commit with both SmokeGateResult JSON blocks captured verbatim in 02-04-SUMMARY.md for provenance equivalence. No Rule 4 architectural change made.
+- Plan 03-01 ships HARN-05 stage 1 (units only): NaNReasonTracer(BaseCallbackHandler) + _classify_post_evaluate_nan pure helper landed in evaluation/harness/score.py via TDD red→green (RED commit e97e864 with 15 failing tests, GREEN commit bc80825 with 109 LOC of impl). The two units are tightly coupled (classifier reads tracer.errors dict) but both pure → land in a single plan. Plan 03-02 wires them into score_query_log via evaluate(callbacks=[tracer], ...) and post-processes each row through _classify_post_evaluate_nan to populate ScoreRecord.nan_reason; Plan 03-03 is the live smoke backstop with checkpoint:human-verify.
+- Plan 03-01 idempotence semantics chose 'first wins' (leaf-most error preserved) over 'last wins' (root-most error preserved). Rationale: RAGAS_PROMPT is the leaf and that's where RagasOutputParserException originates; METRIC and ROW catch-and-re-raise the same exception, so leaf is the most specific signal for HARN-05 reason classification. If a future RAGAS version starts wrapping leaf exceptions in higher-level types (e.g. METRIC catches and re-raises as RagasMetricException), this decision needs revisiting — Plan 03-02 integration tests with a stub LLM should surface that scenario.
+- Plan 03-01 _classify_post_evaluate_nan precedence ladder: captured-exception-type FIRST (specific — json_parse_failure / llm_did_not_finish), then per-metric semantic NaN paths (general — empty_statements / empty_questions / invalid_verdicts), then 'unknown_nan' + WARNING log (defensive — Pitfall 7 of 03-RESEARCH.md says never silently drop NaN). Captured-but-unknown-type (e.g. 'TimeoutError') falls through to per-metric semantic mapping rather than 'unknown_nan' so a known-metric NaN with a novel exception type still gets a meaningful reason string. Test N covers this exact branch.
+- Plan 03-01 placement: NaNReasonTracer + _classify_post_evaluate_nan inserted BETWEEN _short_circuit_nan (existing, byte-identical) and _to_float_or_none (existing, byte-identical) so all NaN-related helpers cluster together. score_query_log signature unchanged (verified via `git diff | grep "def score_query_log"` returning empty); Plan 03-02 will modify it.
+- Plan 03-01 zero deviations: plan executed exactly as written. langchain_core + ragas.callbacks imports verified working in .venv before any code change (one extra `python -c "..."` sanity check, not a deviation). DeprecationWarnings on `from ragas.metrics import ...` in score.py:202 predate Plan 03-01 (visible in Plan 02-04 final pytest run) — out of scope per RULE 4.
 
 ### Pending Todos
 
@@ -113,6 +119,6 @@ Items acknowledged and carried forward as v1.1+:
 
 ## Session Continuity
 
-Last session: 2026-05-05T15:17:00Z
-Stopped at: Phase 2 Plan 02-04 gap closure complete: JUDGE_MAX_TOKENS=8192 landed in score._build_judge via TDD red→green (commits cdbc376 + 7fc6d66), Tier 4 re-scored against existing capture (5/5 faithfulness=1.0), Tier 4 smoke gate PASS, Tier 5 smoke gate PASS (Phase 1 regression check intact). Phase 2 ship gate cleared at smoke-gate level; all 7 plans across Phases 1+2 complete. Orchestrator can now route to Phase 3+ (NaN reason instrumentation, freeze tool, pipeline driver, embedder provenance — all parallel-friendly per ROADMAP overview).
-Resume file: .planning/phases/02-tier-4-graphml-regeneration/02-04-SUMMARY.md
+Last session: 2026-05-05T17:50:53Z
+Stopped at: Phase 3 Plan 03-01 complete: NaNReasonTracer(BaseCallbackHandler) + _classify_post_evaluate_nan pure helper landed in evaluation/harness/score.py via TDD red→green (commits e97e864 + bc80825). 15 new unit tests, +109 LOC score.py, +253 LOC test_eval_score.py. All 28 tests pass; all 7 verification gates PASS. Zero deviations. Phase 3 progress: 1/3 plans complete. Plan 03-02 will wire NaNReasonTracer into score_query_log's evaluate(callbacks=[tracer], ...) and post-process each row through _classify_post_evaluate_nan to populate ScoreRecord.nan_reason; Plan 03-03 is the live smoke backstop with checkpoint:human-verify.
+Resume file: .planning/phases/03-nan-reason-instrumentation/03-01-SUMMARY.md
