@@ -34,6 +34,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -45,6 +46,9 @@ if str(_REPO_ROOT) not in sys.path:
 
 from rich.console import Console
 
+from langchain_core.callbacks import BaseCallbackHandler
+from ragas.callbacks import ChainType
+
 from shared.config import get_settings
 from shared.cost_tracker import CostTracker
 from shared.pricing import PRICES
@@ -55,6 +59,9 @@ from evaluation.harness.records import (
     ScoreRecord,
     read_query_log,
 )
+
+
+_NAN_REASON_LOG = logging.getLogger(__name__)
 
 
 SUPPORTED_TIERS = (1, 2, 3, 4, 5)
@@ -166,6 +173,108 @@ def _short_circuit_nan(rec: EvalRecord) -> Optional[ScoreRecord]:
     if rec.error and rec.error.startswith("cached_miss"):
         return ScoreRecord(question_id=rec.question_id, nan_reason="cached_miss")
     return None
+
+
+class NaNReasonTracer(BaseCallbackHandler):
+    """Capture per-row exception types so post-evaluate NaN classification
+    has structured signals.
+
+    RAGAS 0.4.3's Executor.wrap_callable_with_index swallows per-row
+    exceptions and returns np.nan (ragas/executor.py:71-84). The langchain
+    callback chain fires `on_chain_error` BEFORE the swallow, so subclassing
+    BaseCallbackHandler is the only way to recover the exception TYPE for
+    post-evaluate reason classification (HARN-05).
+
+    Mapping from (row_index, metric_name) → exception_type_name is built up
+    as RAGAS streams chain events; read from `errors` AFTER `evaluate()` returns.
+    """
+
+    def __init__(self) -> None:
+        # str(run_id) → {"type": ChainType, "row_index": Optional[int],
+        #                "metric_name": Optional[str]}
+        self._chains: dict[str, dict] = {}
+        # (row_index, metric_name) → leaf-most exception type name
+        self.errors: dict[tuple[int, str], str] = {}
+
+    def on_chain_start(
+        self, serialized, inputs, *, run_id,
+        parent_run_id=None, tags=None, metadata=None, **kwargs,
+    ) -> None:
+        chain_type = (metadata or {}).get("type")
+        entry: dict = {"type": chain_type}
+        if chain_type == ChainType.ROW:
+            entry["row_index"] = (metadata or {}).get("row_index")
+        elif chain_type == ChainType.METRIC and parent_run_id:
+            parent = self._chains.get(str(parent_run_id), {})
+            entry["row_index"] = parent.get("row_index")
+            # serialized["name"] is "faithfulness-0", "answer_relevancy-3", ...
+            # Strip "-{i}" suffix (Pitfall 4 of RESEARCH.md).
+            raw_name = (serialized or {}).get("name", "")
+            entry["metric_name"] = raw_name.rsplit("-", 1)[0] if "-" in raw_name else raw_name
+        elif chain_type == ChainType.RAGAS_PROMPT and parent_run_id:
+            parent = self._chains.get(str(parent_run_id), {})
+            entry["row_index"] = parent.get("row_index")
+            entry["metric_name"] = parent.get("metric_name")
+        self._chains[str(run_id)] = entry
+
+    def on_chain_error(self, error, *, run_id, **kwargs) -> None:
+        chain = self._chains.get(str(run_id), {})
+        row_idx = chain.get("row_index")
+        metric = chain.get("metric_name")
+        if row_idx is None or metric is None:
+            return
+        key = (row_idx, metric)
+        # Idempotence: keep leaf-most exception (first set wins;
+        # parent re-raises don't overwrite).
+        if key not in self.errors:
+            self.errors[key] = type(error).__name__
+
+
+def _classify_post_evaluate_nan(
+    row_idx: int,
+    metric_name: str,
+    metric_value: Optional[float],
+    tracer: "NaNReasonTracer",
+) -> Optional[str]:
+    """Map a (row_idx, metric, value) cell to a nan_reason string.
+
+    Returns None when metric_value is not None (no NaN, no reason needed).
+
+    Precedence (most specific to least specific):
+      1. Captured RagasOutputParserException → 'json_parse_failure'
+      2. Captured LLMDidNotFinishException → 'llm_did_not_finish'
+      3. faithfulness=NaN, no captured exception → 'empty_statements'
+         (Faithfulness._ascore returns np.nan when statements==[];
+          ragas/metrics/_faithfulness.py:210-211)
+      4. answer_relevancy=NaN, no captured exception → 'empty_questions'
+         (calculate_score returns np.nan when all gen_questions=='';
+          ragas/metrics/_answer_relevance.py:120-124)
+      5. context_precision=NaN, no captured exception → 'invalid_verdicts'
+         (_calculate_average_precision returns np.nan;
+          ragas/metrics/_context_precision.py:116)
+      6. Unknown metric or unmapped path → 'unknown_nan' + WARNING log
+         (defensive — never silently drop NaN; Pitfall 7 of RESEARCH.md)
+    """
+    if metric_value is not None:
+        return None
+    captured = tracer.errors.get((row_idx, metric_name))
+    if captured == "RagasOutputParserException":
+        return "json_parse_failure"
+    if captured == "LLMDidNotFinishException":
+        return "llm_did_not_finish"
+    # Per-metric semantic NaN paths (no exception OR captured-but-unmapped type)
+    if metric_name == "faithfulness":
+        return "empty_statements"
+    if metric_name == "answer_relevancy":
+        return "empty_questions"
+    if metric_name == "context_precision":
+        return "invalid_verdicts"
+    _NAN_REASON_LOG.warning(
+        "unknown_nan: row_idx=%s metric=%s captured=%s — extend "
+        "_classify_post_evaluate_nan",
+        row_idx, metric_name, captured,
+    )
+    return "unknown_nan"
 
 
 def _to_float_or_none(v: Any) -> Optional[float]:
