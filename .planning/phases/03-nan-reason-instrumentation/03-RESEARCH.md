@@ -437,27 +437,31 @@ class _EmptyStatementsLLM:
 | A4 | The phase does NOT need to backfill historical metrics JSONs on disk with new reasons; only files produced AFTER this phase need the richer breakdown | Runtime State Inventory | If the user wants Phase 9's frozen doc to retroactively re-classify Tier 4 / Tier 5 30/30 NaN rows from the 2026-05-02 baseline, that's an explicit re-score — and it would be cheap (the rows have empty_contexts which is already pre-call). Flag for discuss-phase. |
 | A5 | No new pip dependency is required; `langchain-core` is a transitive dep of `ragas` and stable enough to import directly | Standard Stack | If pip resolver puts an incompatible langchain-core version in the env, callback API may break. Verified at research time (`from langchain_core.callbacks import BaseCallbackHandler` works in current `.venv`); add a smoke test asserting the import in test_eval_score.py. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Per-row vs per-metric reason granularity**
    - What we know: ROADMAP success criterion #1 says "a per-row `nan_reason` field" (singular). HARN-05 says "distinguish reasons in per-row metrics output" (also singular).
    - What's unclear: Does the user want one reason per row, or one reason per (row, metric) cell?
    - Recommendation: Start with per-row + documented precedence (faithfulness > AR > CP) as it matches the literal ROADMAP text. Surface the precedence in the planning conversation; defer per-metric to Phase 9 (frozen doc) if reviewers ask for it. ESTIMATED 80% likely the user wants per-row given the simplicity bias visible elsewhere in this project.
+   - **RESOLVED:** per-row, single-string `nan_reason` field on `ScoreRecord` (no schema change — `Optional[str]` already supports any reason). Documented precedence is **faithfulness > answer_relevancy > context_precision**: in `score_query_log` the post-evaluate loop calls `_classify_post_evaluate_nan` once per metric and the FIRST non-None classification wins (Plan 03-02 Task 1, Change B). Plan 03-01 implements the classifier with this precedence; Plan 03-02 wires it into `score_query_log` in BOTH the dataframe branch and the `result.scores` fallback branch. Per-metric attribution is deferred to Phase 9 if reviewers request it (one-line schema upgrade — `nan_reasons: dict[str, Optional[str]]`).
 
 2. **Should we backfill the existing 2026-05-02 baseline metrics with new reasons?**
    - What we know: Tier 4 and Tier 5 baseline files (`evaluation/results/metrics/tier-{4,5}-2026-05-02T*.json`) all show `nan_reason: "empty_contexts"`. That's already the most specific reason — no upgrade possible since they short-circuited pre-call.
    - What's unclear: Phase 1 (Tier 5 fix) and Phase 2 (Tier 4 fix) reruns will produce NEW NaN cases that PASS the pre-call check but might fail mid-evaluate. Do we backfill those?
    - Recommendation: NO backfill of pre-2026-05-04 data — the empty_contexts label is already truthful. Phase 7 (Full 5-Tier Rerun) will produce fresh files with the richer taxonomy automatically.
+   - **RESOLVED:** NO backfill. Existing pre-2026-05-04 metrics files keep their `nan_reason: "empty_contexts"` labels (already truthful — those rows short-circuited pre-call and the new taxonomy adds no information for them). Phase 7's Full 5-Tier Rerun will produce fresh metrics files using the Plan 03-02 wiring and naturally pick up the richer taxonomy. No data migration script needed; the schema is additive (Pydantic `Optional[str]` accepts any string).
 
 3. **How aggressively should we test the live RAGAS callback integration?**
    - What we know: Existing live test (`evaluation/tests/test_eval_smoke_live.py:141`) already exercises a real evaluate() against Gemini judge.
    - What's unclear: Should we add a live test that DELIBERATELY triggers `RagasOutputParserException` (e.g., feed a malformed answer and see judge JSON parse fail)? Or rely on stubbed-LLM unit tests?
    - Recommendation: Stubbed unit tests are sufficient for HARN-05; the failure-mode detection is testable without a real LLM. Add ONE live smoke test that asserts "evaluate() with valid inputs produces no nan_reason of `unknown_nan`" — that catches the case where our classifier misses a real RAGAS NaN path we didn't anticipate.
+   - **RESOLVED:** Primary validation = stub-LLM unit + integration tests (deterministic, $0 cost). Plan 03-01 Tests A-N exercise the tracer + classifier units; Plan 03-02 Task 1 exercises the end-to-end stub path through `score_query_log` with `_MalformedJsonLLM`, `_EmptyStatementsLLM`, AND `_CleanLLM` (clean-path nan_reason=None case). Backstop = ONE live `unknown_nan == 0` assertion in Plan 03-03 against the existing Tier 5 smoke capture (no re-capture cost; estimated $0.005-0.02/run, well under $0.05 Pitfall 7 ceiling). Live test is `-m live` opt-in only (deselected by default — no accidental API spend in CI).
 
 4. **Is `empty_questions` (answer_relevancy NaN with no exception) even reachable in practice?**
    - What we know: `_calculate_score` in `_answer_relevance.py:120-124` returns NaN when `all(q == "" for q in gen_questions)`. This requires the judge to produce exactly N empty `question` fields in its JSON output.
    - What's unclear: Does Gemini Flash 2.5 ever do this? Or does it always produce some non-empty question?
    - Recommendation: Don't pre-optimize — keep `empty_questions` in the taxonomy with a comment that it's defensive. If after Phase 7 zero rows show this reason, we can collapse it in Phase 9. Adding a defensive bucket costs nothing; missing one costs a Phase-9 re-spin.
+   - **RESOLVED:** Keep `empty_questions` as a defensive bucket in `_classify_post_evaluate_nan` (Plan 03-01 Test K covers the classifier path). Revisit after Phase 7's full rerun produces empirical data — if zero rows show `empty_questions` across 5 tiers × 30 questions, Phase 9 can collapse it into `empty_statements`. Adding the defensive bucket costs nothing now; missing it would cost a Phase-9 re-spin if the path turns out to be reachable.
 
 ## Environment Availability
 
