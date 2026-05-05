@@ -220,3 +220,61 @@ def test_cli_help_exits_zero():
     with pytest.raises(SystemExit) as excinfo:
         parser.parse_args(["--help"])
     assert excinfo.value.code == 0
+
+
+def test_build_judge_passes_max_tokens(monkeypatch):
+    """Gap closure (Plan 02-04): _build_judge must pass max_tokens=8192 to
+    llm_factory so RAGAS faithfulness can extract atomic statements from
+    long Tier 4 hybrid-mode answers without truncation. Default RAGAS
+    max_tokens=1024 caused 4/5 NaN on Plan 02-03 smoke."""
+    from evaluation.harness import score
+
+    captured = {}
+    def fake_llm_factory(model, **kwargs):
+        captured["model"] = model
+        captured["kwargs"] = kwargs
+        class _Stub:
+            pass
+        return _Stub()
+    def fake_emb_factory(*args, **kwargs):
+        class _Emb:
+            def embed_text(self, *a, **k): return [0.0]
+            def embed_texts(self, *a, **k): return [[0.0]]
+            async def aembed_text(self, *a, **k): return [0.0]
+            async def aembed_texts(self, *a, **k): return [[0.0]]
+        return _Emb()
+
+    monkeypatch.setattr("ragas.llms.llm_factory", fake_llm_factory)
+    # Patch BOTH possible embedding_factory import paths used by score._build_judge:
+    try:
+        monkeypatch.setattr("ragas.embeddings.base.embedding_factory", fake_emb_factory)
+    except (AttributeError, ImportError):
+        pass
+    try:
+        monkeypatch.setattr("ragas.embeddings.embedding_factory", fake_emb_factory)
+    except (AttributeError, ImportError):
+        pass
+
+    score._build_judge("openrouter/google/gemini-2.5-flash",
+                      "openrouter/openai/text-embedding-3-small")
+
+    assert "max_tokens" in captured["kwargs"], (
+        f"_build_judge did not pass max_tokens to llm_factory; "
+        f"got kwargs={list(captured['kwargs'].keys())}. "
+        f"Plan 02-03 smoke FAILed because RAGAS default 1024 truncates long answers."
+    )
+    assert captured["kwargs"]["max_tokens"] >= 8192, (
+        f"max_tokens={captured['kwargs']['max_tokens']} is below the 8192 floor "
+        f"required to fit RAGAS faithfulness statement-list output for Tier 4 hybrid answers."
+    )
+
+
+def test_build_judge_max_tokens_is_named_constant():
+    """The max_tokens value should live in a module-level constant so it's
+    greppable (`grep JUDGE_MAX_TOKENS evaluation/harness/score.py`) and
+    tweakable without editing the function body."""
+    from evaluation.harness import score
+    assert hasattr(score, "JUDGE_MAX_TOKENS"), (
+        "score.py must expose JUDGE_MAX_TOKENS as a module-level constant"
+    )
+    assert score.JUDGE_MAX_TOKENS >= 8192
