@@ -278,3 +278,256 @@ def test_build_judge_max_tokens_is_named_constant():
         "score.py must expose JUDGE_MAX_TOKENS as a module-level constant"
     )
     assert score.JUDGE_MAX_TOKENS >= 8192
+
+
+# ----------------------------------------------------------------------
+# Phase 3 Plan 03-01 — NaNReasonTracer + _classify_post_evaluate_nan
+# See .planning/phases/03-nan-reason-instrumentation/03-01-PLAN.md
+# ----------------------------------------------------------------------
+
+
+def test_nan_reason_smoke_import():
+    """Smoke import: NaNReasonTracer + _classify_post_evaluate_nan must be
+    importable from evaluation.harness.score (Plan 03-01 surface)."""
+    from evaluation.harness.score import (  # noqa: F401
+        NaNReasonTracer,
+        _classify_post_evaluate_nan,
+    )
+
+
+# --- NaNReasonTracer tests (A-F) ---
+
+
+def test_nan_reason_tracer_row_only_no_metric_no_capture():
+    """Test A: ROW chain start + ROW-level on_chain_error → errors empty
+    (no metric_name attached at ROW level, EVALUATION-level errors are silently ignored)."""
+    import uuid
+    from ragas.callbacks import ChainType
+    from evaluation.harness.score import NaNReasonTracer
+
+    tracer = NaNReasonTracer()
+    row_rid = uuid.uuid4()
+    tracer.on_chain_start(
+        {}, {}, run_id=row_rid,
+        metadata={"type": ChainType.ROW, "row_index": 0},
+    )
+    tracer.on_chain_error(RuntimeError("row-level boom"), run_id=row_rid)
+    assert tracer.errors == {}
+
+
+def test_nan_reason_tracer_captures_metric_exception_parser():
+    """Test B: ROW + METRIC chain, METRIC fires on_chain_error(RagasOutputParserException) →
+    errors[(0, "faithfulness")] == "RagasOutputParserException"."""
+    import uuid
+    from ragas.callbacks import ChainType
+    from evaluation.harness.score import NaNReasonTracer
+
+    tracer = NaNReasonTracer()
+    row_rid = uuid.uuid4()
+    met_rid = uuid.uuid4()
+    tracer.on_chain_start(
+        {}, {}, run_id=row_rid,
+        metadata={"type": ChainType.ROW, "row_index": 0},
+    )
+    tracer.on_chain_start(
+        {"name": "faithfulness-0"}, {}, run_id=met_rid,
+        parent_run_id=row_rid,
+        metadata={"type": ChainType.METRIC},
+    )
+    # Synthetic exception class — type-name is what matters.
+    class RagasOutputParserException(Exception):
+        pass
+    tracer.on_chain_error(RagasOutputParserException("bad json"), run_id=met_rid)
+    assert tracer.errors == {(0, "faithfulness"): "RagasOutputParserException"}
+
+
+def test_nan_reason_tracer_captures_metric_exception_llm_did_not_finish():
+    """Test C: METRIC fires on_chain_error(LLMDidNotFinishException) →
+    errors[(0, "faithfulness")] == "LLMDidNotFinishException"."""
+    import uuid
+    from ragas.callbacks import ChainType
+    from evaluation.harness.score import NaNReasonTracer
+
+    tracer = NaNReasonTracer()
+    row_rid = uuid.uuid4()
+    met_rid = uuid.uuid4()
+    tracer.on_chain_start(
+        {}, {}, run_id=row_rid,
+        metadata={"type": ChainType.ROW, "row_index": 0},
+    )
+    tracer.on_chain_start(
+        {"name": "faithfulness-0"}, {}, run_id=met_rid,
+        parent_run_id=row_rid,
+        metadata={"type": ChainType.METRIC},
+    )
+    class LLMDidNotFinishException(Exception):
+        pass
+    tracer.on_chain_error(LLMDidNotFinishException("max tokens"), run_id=met_rid)
+    assert tracer.errors == {(0, "faithfulness"): "LLMDidNotFinishException"}
+
+
+def test_nan_reason_tracer_ragas_prompt_inherits_via_parent_walk():
+    """Test D: ROW(row_index=2) → METRIC(name="answer_relevancy-2") → RAGAS_PROMPT;
+    on_chain_error on PROMPT chain propagates row_idx=2, metric="answer_relevancy"
+    via parent walk (RAGAS_PROMPT inherits from METRIC parent)."""
+    import uuid
+    from ragas.callbacks import ChainType
+    from evaluation.harness.score import NaNReasonTracer
+
+    tracer = NaNReasonTracer()
+    row_rid = uuid.uuid4()
+    met_rid = uuid.uuid4()
+    prompt_rid = uuid.uuid4()
+    tracer.on_chain_start(
+        {}, {}, run_id=row_rid,
+        metadata={"type": ChainType.ROW, "row_index": 2},
+    )
+    tracer.on_chain_start(
+        {"name": "answer_relevancy-2"}, {}, run_id=met_rid,
+        parent_run_id=row_rid,
+        metadata={"type": ChainType.METRIC},
+    )
+    tracer.on_chain_start(
+        {}, {}, run_id=prompt_rid,
+        parent_run_id=met_rid,
+        metadata={"type": ChainType.RAGAS_PROMPT},
+    )
+    class RagasOutputParserException(Exception):
+        pass
+    tracer.on_chain_error(RagasOutputParserException("bad json"), run_id=prompt_rid)
+    assert tracer.errors == {(2, "answer_relevancy"): "RagasOutputParserException"}
+
+
+def test_nan_reason_tracer_two_metrics_same_row():
+    """Test E: Two metrics on same row both error → errors holds both
+    ("faithfulness", "answer_relevancy") keys for row_idx=0."""
+    import uuid
+    from ragas.callbacks import ChainType
+    from evaluation.harness.score import NaNReasonTracer
+
+    tracer = NaNReasonTracer()
+    row_rid = uuid.uuid4()
+    faith_rid = uuid.uuid4()
+    ar_rid = uuid.uuid4()
+    tracer.on_chain_start(
+        {}, {}, run_id=row_rid,
+        metadata={"type": ChainType.ROW, "row_index": 0},
+    )
+    tracer.on_chain_start(
+        {"name": "faithfulness-0"}, {}, run_id=faith_rid,
+        parent_run_id=row_rid,
+        metadata={"type": ChainType.METRIC},
+    )
+    tracer.on_chain_start(
+        {"name": "answer_relevancy-0"}, {}, run_id=ar_rid,
+        parent_run_id=row_rid,
+        metadata={"type": ChainType.METRIC},
+    )
+    class RagasOutputParserException(Exception):
+        pass
+    class LLMDidNotFinishException(Exception):
+        pass
+    tracer.on_chain_error(RagasOutputParserException("bad"), run_id=faith_rid)
+    tracer.on_chain_error(LLMDidNotFinishException("max"), run_id=ar_rid)
+    assert tracer.errors == {
+        (0, "faithfulness"): "RagasOutputParserException",
+        (0, "answer_relevancy"): "LLMDidNotFinishException",
+    }
+
+
+def test_nan_reason_tracer_idempotence_first_wins():
+    """Test F: Idempotence — fire on_chain_error twice on same (row, metric);
+    errors holds the FIRST exception type (parent re-raises don't overwrite leaf)."""
+    import uuid
+    from ragas.callbacks import ChainType
+    from evaluation.harness.score import NaNReasonTracer
+
+    tracer = NaNReasonTracer()
+    row_rid = uuid.uuid4()
+    met_rid = uuid.uuid4()
+    tracer.on_chain_start(
+        {}, {}, run_id=row_rid,
+        metadata={"type": ChainType.ROW, "row_index": 0},
+    )
+    tracer.on_chain_start(
+        {"name": "faithfulness-0"}, {}, run_id=met_rid,
+        parent_run_id=row_rid,
+        metadata={"type": ChainType.METRIC},
+    )
+    class RagasOutputParserException(Exception):
+        pass
+    class LLMDidNotFinishException(Exception):
+        pass
+    tracer.on_chain_error(RagasOutputParserException("first"), run_id=met_rid)
+    tracer.on_chain_error(LLMDidNotFinishException("second"), run_id=met_rid)
+    # First wins — leaf-most exception preserved, parent re-raise does NOT overwrite.
+    assert tracer.errors == {(0, "faithfulness"): "RagasOutputParserException"}
+
+
+# --- _classify_post_evaluate_nan tests (G-N) ---
+
+
+def test_classify_non_nan_returns_none():
+    """Test G: metric_value is not None → returns None (defensive: non-NaN never gets a reason)."""
+    from evaluation.harness.score import _classify_post_evaluate_nan, NaNReasonTracer
+    assert _classify_post_evaluate_nan(0, "faithfulness", 0.85, NaNReasonTracer()) is None
+
+
+def test_classify_captured_ragas_output_parser_exception():
+    """Test H: tracer captured RagasOutputParserException for (0, "faithfulness"),
+    value=None → "json_parse_failure"."""
+    from evaluation.harness.score import _classify_post_evaluate_nan, NaNReasonTracer
+    tracer = NaNReasonTracer()
+    tracer.errors[(0, "faithfulness")] = "RagasOutputParserException"
+    assert _classify_post_evaluate_nan(0, "faithfulness", None, tracer) == "json_parse_failure"
+
+
+def test_classify_captured_llm_did_not_finish_exception():
+    """Test I: tracer captured LLMDidNotFinishException, value=None → "llm_did_not_finish"."""
+    from evaluation.harness.score import _classify_post_evaluate_nan, NaNReasonTracer
+    tracer = NaNReasonTracer()
+    tracer.errors[(0, "faithfulness")] = "LLMDidNotFinishException"
+    assert _classify_post_evaluate_nan(0, "faithfulness", None, tracer) == "llm_did_not_finish"
+
+
+def test_classify_empty_tracer_faithfulness_empty_statements():
+    """Test J: empty tracer, faithfulness value=None → "empty_statements"
+    (ragas/metrics/_faithfulness.py:210-211 returns np.nan when statements=[])."""
+    from evaluation.harness.score import _classify_post_evaluate_nan, NaNReasonTracer
+    assert _classify_post_evaluate_nan(0, "faithfulness", None, NaNReasonTracer()) == "empty_statements"
+
+
+def test_classify_empty_tracer_answer_relevancy_empty_questions():
+    """Test K: empty tracer, answer_relevancy value=None → "empty_questions"
+    (ragas/metrics/_answer_relevance.py:120-124 returns np.nan when all gen_questions='')."""
+    from evaluation.harness.score import _classify_post_evaluate_nan, NaNReasonTracer
+    assert _classify_post_evaluate_nan(0, "answer_relevancy", None, NaNReasonTracer()) == "empty_questions"
+
+
+def test_classify_empty_tracer_context_precision_invalid_verdicts():
+    """Test L: empty tracer, context_precision value=None → "invalid_verdicts"
+    (ragas/metrics/_context_precision.py:116 returns np.nan from _calculate_average_precision)."""
+    from evaluation.harness.score import _classify_post_evaluate_nan, NaNReasonTracer
+    assert _classify_post_evaluate_nan(0, "context_precision", None, NaNReasonTracer()) == "invalid_verdicts"
+
+
+def test_classify_unknown_nan_emits_warning(caplog):
+    """Test M: empty tracer, unknown metric "mystery_metric" value=None → "unknown_nan"
+    AND a logging.warning fires (Pitfall 7 of RESEARCH.md — never silently drop NaN)."""
+    import logging
+    from evaluation.harness.score import _classify_post_evaluate_nan, NaNReasonTracer
+    with caplog.at_level(logging.WARNING):
+        result = _classify_post_evaluate_nan(0, "mystery_metric", None, NaNReasonTracer())
+    assert result == "unknown_nan"
+    assert any("unknown_nan" in r.message for r in caplog.records)
+
+
+def test_classify_captured_unknown_exception_falls_to_semantic():
+    """Test N: tracer captured an exception type the classifier doesn't recognize
+    (e.g. "TimeoutError"); for faithfulness this falls through to per-metric semantic
+    path → "empty_statements" (NOT "unknown_nan" — captured-but-unknown-type still
+    falls to semantic mapping for known metrics)."""
+    from evaluation.harness.score import _classify_post_evaluate_nan, NaNReasonTracer
+    tracer = NaNReasonTracer()
+    tracer.errors[(0, "faithfulness")] = "TimeoutError"
+    assert _classify_post_evaluate_nan(0, "faithfulness", None, tracer) == "empty_statements"
