@@ -8,9 +8,12 @@ QueryLog JSON the harness Stage 2 reads.
 Run from repo root:
     cd rag-architecture-patterns
     python tier-4-multimodal/scripts/eval_capture.py            # all 30 questions, hybrid mode
-    python tier-4-multimodal/scripts/eval_capture.py --limit 5  # smoke
+    python tier-4-multimodal/scripts/eval_capture.py --limit 5  # smoke (first 5 ids)
     python tier-4-multimodal/scripts/eval_capture.py --mode local
     python tier-4-multimodal/scripts/eval_capture.py --yes      # skip cost-surprise gate
+    python tier-4-multimodal/scripts/eval_capture.py \
+        --smoke-question-ids single-hop-001,single-hop-002,single-hop-003,multi-hop-001,multi-hop-002 \
+        --yes                                                   # Phase 2 smoke (Plan 02-03)
 
 Cost ballpark: 30 questions × ~$0.0015/query (per-query cost from 130-RESEARCH
 @ 2026-04 vintage) = ~$0.05 for query phase. Ingest is one-time and assumed
@@ -45,6 +48,9 @@ from tier_4_multimodal.cost_adapter import CostAdapter
 from tier_4_multimodal.query import run_query
 
 from evaluation.harness.records import EvalRecord, QueryLog, write_query_log
+# Single source of truth for the Phase 1/2 smoke set. Import — do not re-declare
+# (Pitfall 5 of 02-RESEARCH.md). Locked by 01-CONTEXT.md D-03.
+from evaluation.harness.run import DEFAULT_SMOKE_IDS
 
 
 GOLDEN_QA = _REPO_ROOT / "evaluation" / "golden_qa.json"
@@ -61,6 +67,44 @@ def _git_sha() -> str:
         return "unknown"
 
 
+def _filter_qa(
+    qa: list,
+    smoke_ids: str | None,
+    limit: int | None,
+    console: Console,
+) -> list | int:
+    """Apply --smoke-question-ids then --limit filtering to a golden_qa list.
+
+    Pure function (no network, no globals beyond stdout via ``console``). Mirrors
+    the by-id filter pattern in ``evaluation/harness/run.py`` (locked by Phase 1
+    D-03 / D-04) so behavior is symmetric across the two capture entry points.
+
+    Args:
+        qa:        list of golden_qa.json question dicts.
+        smoke_ids: comma-separated id list. ``None`` or empty string → no filter.
+        limit:     after smoke filter, truncate to first N. ``None`` → no truncation.
+        console:   Rich Console for the unknown-id error message.
+
+    Returns:
+        Filtered ``list`` on success. ``int`` ``2`` if any smoke_id is unknown
+        (matches the exit code of the equivalent path in ``run.py``).
+
+    Order of operations: smoke_ids narrows by name first, then ``limit`` slices
+    the result. ``--smoke-question-ids X,Y,Z --limit 2`` → first 2 of [X,Y,Z].
+    """
+    if smoke_ids:
+        wanted = [s.strip() for s in smoke_ids.split(",") if s.strip()]
+        by_id = {q["id"]: q for q in qa}
+        missing = [w for w in wanted if w not in by_id]
+        if missing:
+            console.print(f"[red]Unknown question ids: {missing}[/red]")
+            return 2
+        qa = [by_id[w] for w in wanted]  # preserves user-given order
+    if limit is not None:
+        qa = qa[:limit]
+    return qa
+
+
 async def _capture(args, console: Console) -> int:
     settings = get_settings()
     if not settings.openrouter_api_key:
@@ -72,8 +116,15 @@ async def _capture(args, console: Console) -> int:
         return 2
 
     qa = json.loads(GOLDEN_QA.read_text())
-    if args.limit is not None:
-        qa = qa[: args.limit]
+    filtered = _filter_qa(
+        qa,
+        smoke_ids=getattr(args, "smoke_question_ids", None),
+        limit=args.limit,
+        console=console,
+    )
+    if isinstance(filtered, int):
+        return filtered  # propagates exit-2 on unknown smoke ids
+    qa = filtered
 
     if not args.yes:
         console.print(
@@ -157,6 +208,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--mode", default="hybrid", choices=["naive", "local", "global", "hybrid", "mix"])
     p.add_argument("--model", default=None, help="(reserved; LLM is baked into build_rag at construction)")
     p.add_argument("--limit", type=int, default=None, help="Run on first N questions (default: all 30).")
+    p.add_argument(
+        "--smoke-question-ids",
+        default=None,
+        help=(
+            "Comma-separated question ids to filter golden_qa.json down to a smoke subset. "
+            f"Phase 1/2 default constant: {','.join(DEFAULT_SMOKE_IDS)}. "
+            "When set, filters BEFORE --limit. Unknown ids exit 2."
+        ),
+    )
     p.add_argument("--yes", action="store_true", help="Skip cost-surprise prompt.")
     return p
 
