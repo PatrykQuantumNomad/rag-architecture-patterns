@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: "Phase 2 Plan 02-01 complete (smoke-only ingest per orchestrator Option B): 2886 nodes / 7056 edges in graphml; 3/3 smoke papers in kv_store_full_docs.json; provenance manifest at evaluation/results/diagnostics/tier-4-graph-stats-2026-05-05T11_14_40Z.json (committed at 39f02cd); 72 papers explicitly deferred to Phase 7 pre-rerun ingest; cost $1.89. Plans 02-02 and 02-03 remain in Phase 2."
-last_updated: "2026-05-05T11:35:00Z"
-last_activity: "2026-05-05 — Phase 02 Plan 02-01 Task 2b smoke-only ingest landed (3 of 75 papers per orchestrator Option B); diagnostics manifest committed at 39f02cd; cost $1.89 against bounded smoke budget"
+stopped_at: "Phase 2 Plan 02-02 complete (host MineRU top-up approved): 4/4 golden_qa-referenced papers parsed on host in ~49 min; MineRU cache now 79 papers; Phase 2 graphml unchanged (smoke-only); Plan 02-03 remains."
+last_updated: "2026-05-05T12:00:00Z"
+last_activity: "2026-05-05 — Phase 02 Plan 02-02 host MineRU top-up complete (approved branch); 4 papers parsed on host in ~49 min; cache extended to 79 papers; Phase 7 can now run full 79-paper ingest"
 progress:
   total_phases: 9
   completed_phases: 1
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 
 ## Current Position
 
-Phase: 2 of 9 (Tier 4 Graphml Regeneration) — Plan 02-01 complete
-Plan: 1 of 3 complete in Phase 2 (02-02 and 02-03 remain)
-Status: Plan 02-01 landed smoke-only graphml (2886 nodes / 7056 edges, 3 papers); 72 papers deferred to Phase 7 per orchestrator Option B
-Last activity: 2026-05-05 — Phase 02 Plan 02-01 Task 2b smoke-only ingest committed at 39f02cd
+Phase: 2 of 9 (Tier 4 Graphml Regeneration) — Plans 02-01 and 02-02 complete
+Plan: 2 of 3 complete in Phase 2 (02-03 remains)
+Status: Plan 02-01 landed smoke-only graphml (2886 nodes / 7056 edges, 3 papers); Plan 02-02 top-up MineRU cache to 79 papers (approved, non-blocking); 02-03 smoke verification next
+Last activity: 2026-05-05 — Phase 02 Plan 02-02 host MineRU top-up complete (approved; 4/4 papers; ~49 min wall)
 
-Progress: [█░░░░░░░░░] 11% (1/9 phases complete; Phase 2 in progress 1/3 plans)
+Progress: [█░░░░░░░░░] 11% (1/9 phases complete; Phase 2 in progress 2/3 plans)
 
 ## Performance Metrics
 
@@ -77,6 +77,7 @@ Recent decisions affecting current work:
 - **Phase 2 Plan 02-01 Task 2b ran smoke-only (3 of 75 papers: 2005.11401, 2004.04906, 2002.08909) per orchestrator Option B; full 75-paper ingest deferred to Phase 7 pre-rerun. Reason: measured paper-1 wall time of ~21 min projected ~15–25h / $1.50–3 vs plan budget of 10–30 min / $0.50–1.00. Phase 2 must-haves are met for the smoke set; Phase 7 is the architecturally correct place for the remaining 72 papers.**
 - Phase 2 graphml ground truth captured at 2026-05-05T11:14:40Z: 2886 nodes / 7056 edges from 3 smoke papers, raganything==1.2.10, lightrag-hku==1.4.15, mineru==3.1.4 — this manifest is the version-of-record for Phase 9's frozen doc
 - RAG-Anything 1.2.10 + lightrag-hku 1.4.15 require two integration fixes for Tier 4: (a) bypass the mineru-CLI parser-version probe at construction time when ingesting cached JSON via `insert_content_list`, and (b) forward `OPENROUTER_API_KEY` into `os.environ` at script entry because lightrag's openai_complete_if_cache reads it lazily inside async closures, not from the SecretStr-wrapped settings object — both fixes live in `tier-4-multimodal/scripts/ingest_from_mineru.py` (committed 5bc3f24)
+- Plan 02-02 host MineRU top-up: 4/4 papers parsed successfully on host (approved branch). Wall time ~49 min total. The 4 new papers are in the MineRU cache but NOT in the smoke-only graphml; Phase 7 will re-rebuild over the full 79-paper cache.
 
 ### Pending Todos
 
@@ -104,6 +105,6 @@ Items acknowledged and carried forward as v1.1+:
 
 ## Session Continuity
 
-Last session: 2026-05-05T11:35:00Z
-Stopped at: Phase 2 Plan 02-01 complete (smoke-only Task 2b per orchestrator Option B). Provenance manifest at `.planning/phases/02-tier-4-graphml-regeneration/02-01-SUMMARY.md` and `evaluation/results/diagnostics/tier-4-graph-stats-2026-05-05T11_14_40Z.json`; storage at `rag_anything_storage/tier-4-multimodal/` (gitignored). 72 papers deferred to Phase 7. Next: Plan 02-02 (parse 4 missing papers) and Plan 02-03 (smoke verification).
-Resume file: .planning/phases/02-tier-4-graphml-regeneration/02-01-SUMMARY.md
+Last session: 2026-05-05T12:00:00Z
+Stopped at: Phase 2 Plan 02-02 complete (host MineRU top-up approved). 4/4 golden_qa-referenced papers parsed in ~49 min; MineRU cache at 79 papers. Next: Plan 02-03 (smoke verification).
+Resume file: .planning/phases/02-tier-4-graphml-regeneration/02-02-SUMMARY.md
