@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: "Phase 2 Plan 02-02 complete (host MineRU top-up approved): 4/4 golden_qa-referenced papers parsed on host in ~49 min; MineRU cache now 79 papers; Phase 2 graphml unchanged (smoke-only); Plan 02-03 remains."
-last_updated: "2026-05-05T12:00:00Z"
-last_activity: "2026-05-05 — Phase 02 Plan 02-02 host MineRU top-up complete (approved branch); 4 papers parsed on host in ~49 min; cache extended to 79 papers; Phase 7 can now run full 79-paper ingest"
+stopped_at: "Phase 2 Plan 02-03 complete with smoke_gate verdict=FAIL on faithfulness max_tokens (judge-side issue, not Plan 02-01 regression): 5/5 retrieved_contexts populated, ratio=1.0, no Python repr leak; 4/5 faithfulness NaN due to RAGAS extracting atomic statements from long Tier 4 hybrid answers (2011-2575 chars) hitting Gemini's 1024-token output cap. Recommended gap-closure: bump litellm max_tokens=8192 in score._build_judge and re-run score only."
+last_updated: "2026-05-05T14:18:42Z"
+last_activity: "2026-05-05 — Phase 02 Plan 02-03 executed end-to-end: --smoke-question-ids flag landed on eval_capture.py with 12 unit tests, tier4_storage_present fixture + test_eval_smoke_tier4_full_pipeline live test added (collected under -m live), Rule-1 auto-fix for context-probe API drift, full pipeline run: capture (5 records, n_ctx [1,7,1,5,1]) → re-emit → score → smoke_gate verdict=FAIL on faithfulness max_tokens; FAIL surfaced for orchestrator gap-closure routing per plan."
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 6
-  completed_plans: 5
-  percent: 83
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
@@ -21,36 +21,37 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** Produce reproducible, honest numbers for the blog — every claim backed by a captured run with full provenance.
-**Current focus:** Phase 2 (Tier 4 Graphml Regeneration) — Plan 02-01 complete (smoke-only); Plans 02-02 + 02-03 remain
+**Current focus:** Phase 2 (Tier 4 Graphml Regeneration) — all 3 plans complete; Plan 02-03 smoke gate verdict=FAIL on judge-side max_tokens (gap-closure routing required before phase ship)
 
 ## Current Position
 
-Phase: 2 of 9 (Tier 4 Graphml Regeneration) — Plans 02-01 and 02-02 complete
-Plan: 2 of 3 complete in Phase 2 (02-03 remains)
-Status: Plan 02-01 landed smoke-only graphml (2886 nodes / 7056 edges, 3 papers); Plan 02-02 top-up MineRU cache to 79 papers (approved, non-blocking); 02-03 smoke verification next
-Last activity: 2026-05-05 — Phase 02 Plan 02-02 host MineRU top-up complete (approved; 4/4 papers; ~49 min wall)
+Phase: 2 of 9 (Tier 4 Graphml Regeneration) — all 3 plans complete
+Plan: 3 of 3 complete in Phase 2; Plan 02-03 smoke verdict FAIL surfaced for orchestrator gap-closure routing
+Status: Plan 02-01 landed smoke-only graphml (2886 nodes / 7056 edges, 3 papers); Plan 02-02 top-up MineRU cache to 79 papers (approved, non-blocking); Plan 02-03 deliverables shipped (--smoke-question-ids flag + helper, live smoke test, context-probe API-drift fix), pipeline executed end-to-end, smoke_gate verdict=FAIL on judge faithfulness max_tokens (NOT a Plan 02-01 regression — n_populated=5/5, ratio=1.0)
+Last activity: 2026-05-05 — Phase 02 Plan 02-03 deliverables shipped + FAIL verdict surfaced; full root-cause analysis in 02-03-SUMMARY.md
 
-Progress: [█░░░░░░░░░] 11% (1/9 phases complete; Phase 2 in progress 2/3 plans)
+Progress: [██░░░░░░░░] 22% phase-level (1/9 phases fully complete) | 100% plan-level for active phases (6/6 plans across Phases 1+2)
+Phase 2 plans all delivered but the smoke gate FAIL on faithfulness max_tokens means Phase 2 ship is pending the recommended judge max_tokens bump + score-only re-run.
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 4
-- Average duration: ~20 min
-- Total execution time: ~1.2 hours
+- Total plans completed: 6
+- Average duration: ~22 min
+- Total execution time: ~2.2 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-tier-5-adapter-fix | 3 | ~22 min | ~7 min |
-| 02-tier-4-graphml-regeneration | 1 | ~50 min (Plan 02-01 Task 2b live ingest) | ~50 min |
+| 02-tier-4-graphml-regeneration | 3 | ~130 min (~50 min Plan 02-01 + ~50 min Plan 02-02 host MineRU + ~30 min Plan 02-03) | ~43 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (8 min), 01-03 (4 min), 01-02 (~10 min incl. live smoke + checkpoint), 02-01 (~50 min Task 2b live ingest, smoke-only)
-- Trend: live-ingest plans are an order of magnitude longer than pure-code plans, as expected
+- Last 6 plans: 01-01 (8 min), 01-03 (4 min), 01-02 (~10 min), 02-01 (~50 min), 02-02 (~50 min host MineRU), 02-03 (~30 min Task 1 + Task 2 with 3 capture cycles)
+- Trend: live-ingest plans are 5-10× pure-code plans; smoke verification plans (Plan 02-03) sit in between because they include both pytest-only Task 1 work and live capture/score in Task 2.
 
 *Updated after each plan completion*
 
@@ -78,6 +79,9 @@ Recent decisions affecting current work:
 - Phase 2 graphml ground truth captured at 2026-05-05T11:14:40Z: 2886 nodes / 7056 edges from 3 smoke papers, raganything==1.2.10, lightrag-hku==1.4.15, mineru==3.1.4 — this manifest is the version-of-record for Phase 9's frozen doc
 - RAG-Anything 1.2.10 + lightrag-hku 1.4.15 require two integration fixes for Tier 4: (a) bypass the mineru-CLI parser-version probe at construction time when ingesting cached JSON via `insert_content_list`, and (b) forward `OPENROUTER_API_KEY` into `os.environ` at script entry because lightrag's openai_complete_if_cache reads it lazily inside async closures, not from the SecretStr-wrapped settings object — both fixes live in `tier-4-multimodal/scripts/ingest_from_mineru.py` (committed 5bc3f24)
 - Plan 02-02 host MineRU top-up: 4/4 papers parsed successfully on host (approved branch). Wall time ~49 min total. The 4 new papers are in the MineRU cache but NOT in the smoke-only graphml; Phase 7 will re-rebuild over the full 79-paper cache.
+- Plan 02-03 ships --smoke-question-ids on tier-4-multimodal/scripts/eval_capture.py with single-source-of-truth import of DEFAULT_SMOKE_IDS from evaluation.harness.run (Pitfall 5 of 02-RESEARCH.md). 12 unit tests cover the new pure helper _filter_qa(); test_eval_smoke_tier4_full_pipeline live test added (collected under -m live alongside tier-1 + tier-5).
+- Plan 02-03 Rule-1 auto-fix: eval_capture.py's context probe used `rag.aquery(... param=...)` which fails under RAG-Anything 1.2.10 (signature does not accept `param=`); fix calls `rag.lightrag.aquery(... param=QueryParam(...))` directly, mirroring what RAGAnything itself does internally. Without the fix, retrieved_contexts was empty for all queries, masking real signal.
+- Plan 02-03 smoke verdict: FAIL on faithfulness NaN (4/5 rows). Root cause is RAGAS faithfulness metric's _create_statements step hitting Gemini's 1024-token output cap when extracting atomic claims from long Tier 4 hybrid-mode answers (2011-2575 chars). NOT a Plan 02-01 regression: n_populated=5/5, ratio=1.0, context_precision 5/5 non-NaN, answer_relevancy 5/5 non-NaN, no Python repr leak. Recommended gap-closure: add max_tokens=8192 to score._build_judge's litellm.completion config and re-run score only.
 
 ### Pending Todos
 
@@ -89,6 +93,7 @@ None yet.
 - OpenRouter passthrough may obscure the exact Gemini model version (`gemini-2.5-flash-001` vs bare `gemini-2.5-flash`) for provenance; Phase 9 must document the version-unknown case explicitly if unresolvable
 - Phase 7 pre-rerun ingest must process 72 remaining papers (`tier-4-multimodal/output/` minus 3 smoke papers minus 4 Plan-02-02 fresh-MineRU papers); projected wall ~15–25h / cost ~$15–35
 - Phase 7 ingest run will hit OpenRouter vision-LLM `400 Invalid URL format` errors on larger figures (base64 image data exceeding URL length limit); recommend pre-warming `kv_store_llm_response_cache.json` or routing vision direct to OpenAI/Gemini (off-OpenRouter) to mitigate
+- **Plan 02-03 smoke gate FAIL pending gap-closure**: faithfulness max_tokens NaN on 4/5 Tier 4 smoke rows. Methodology fix needed: bump litellm `max_tokens=8192` in `evaluation/harness/score.py::_build_judge` and re-run `python -m evaluation.harness.score --tiers 4 --yes` against the existing capture (`evaluation/results/queries/tier-4-2026-05-05T13_59_50Z.json`). One-line code change with bounded cost impact; should land before Phase 7 to avoid the same FAIL on full-corpus Tier 4 score. Defense-in-depth follow-up: parse cost from raised-exception completion bodies in score.py so judge cost ledger doesn't underreport when retries fail.
 
 ## Deferred Items
 
@@ -105,6 +110,6 @@ Items acknowledged and carried forward as v1.1+:
 
 ## Session Continuity
 
-Last session: 2026-05-05T12:00:00Z
-Stopped at: Phase 2 Plan 02-02 complete (host MineRU top-up approved). 4/4 golden_qa-referenced papers parsed in ~49 min; MineRU cache at 79 papers. Next: Plan 02-03 (smoke verification).
-Resume file: .planning/phases/02-tier-4-graphml-regeneration/02-02-SUMMARY.md
+Last session: 2026-05-05T14:18:42Z
+Stopped at: Phase 2 Plan 02-03 deliverables shipped (--smoke-question-ids flag, _filter_qa helper, 12 unit tests, tier4_storage_present fixture, test_eval_smoke_tier4_full_pipeline live test, Rule-1 context-probe fix), pipeline executed end-to-end, smoke_gate verdict=FAIL surfaced for gap-closure. All 6 plans done; phase ship pending the score.py max_tokens bump + score-only re-run.
+Resume file: .planning/phases/02-tier-4-graphml-regeneration/02-03-SUMMARY.md

@@ -12,8 +12,8 @@ Requirements for the eval-numbers handoff to the external blog repo. Each maps t
 Bug fixes that gate every other v1.0 requirement — the eval cannot ship credible numbers until both tiers stop returning 30/30 NaN.
 
 - [x] **TIER-01**: User can run Tier 5 evaluation and get non-empty `retrieved_contexts` populated by walking `RunResult.new_items` for `ToolCallOutputItem` (replaces the hard-coded `retrieved_contexts=[]` at `evaluation/harness/adapters/tier_5.py:125`) — completed 2026-05-04 in Phase 01 Plan 01 (commit baaa573)
-- [ ] **TIER-02**: User can regenerate clean Tier 4 graphml from a wiped `rag_anything_storage/tier-4-multimodal/` directory by running MineRU CLI on the host machine (outside the sandbox) and feeding parsed JSON into RAG-Anything ingestion
-- [ ] **TIER-03**: User can verify each tier's fix on a 5-question smoke test before committing to a full 30-question rerun (catches regressions before spending the rerun budget)
+- [x] **TIER-02**: User can regenerate clean Tier 4 graphml from a wiped `rag_anything_storage/tier-4-multimodal/` directory by running MineRU CLI on the host machine (outside the sandbox) and feeding parsed JSON into RAG-Anything ingestion — completed 2026-05-05 in Phase 02 Plan 02-01 (commit 39f02cd; smoke-only 3-paper rebuild per orchestrator Option B; full 75-paper rebuild deferred to Phase 7 pre-rerun)
+- [~] **TIER-03**: User can verify each tier's fix on a 5-question smoke test before committing to a full 30-question rerun (catches regressions before spending the rerun budget) — Phase 1 half complete (Tier 5 smoke PASS, 2026-05-04); Phase 2 half deliverables shipped 2026-05-05 (Plan 02-03 commits 1bc1ba1 / 17142f8 / 693495e) but smoke gate FAIL on judge max_tokens — pending one-line gap-closure in `evaluation/harness/score.py::_build_judge` (`max_tokens=8192` on litellm.completion)
 
 ### Eval Harness
 
@@ -84,8 +84,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | TIER-01 | Phase 1 | Complete (2026-05-04, commit baaa573) |
-| TIER-02 | Phase 2 | Pending |
-| TIER-03 | Phase 1 + Phase 2 (split: Tier 5 smoke in P1, Tier 4 smoke in P2) | Pending |
+| TIER-02 | Phase 2 | Complete-with-deviation (Plan 02-01, 2026-05-05, commit 39f02cd; smoke-only 3-paper graphml per orchestrator Option B; full 75-paper rebuild deferred to Phase 7 pre-rerun) |
+| TIER-03 | Phase 1 + Phase 2 (split: Tier 5 smoke in P1, Tier 4 smoke in P2) | P1 half complete (2026-05-04, Tier 5 smoke PASS); P2 half deliverables shipped (2026-05-05, Plan 02-03) but smoke gate FAIL on judge max_tokens — pending one-line gap-closure in score.py before requirement is fully satisfied |
 | HARN-01 | Phase 5 | Pending |
 | HARN-02 | Phase 5 | Pending |
 | HARN-03 | Phase 4 | Pending |
