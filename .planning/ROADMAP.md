@@ -13,7 +13,7 @@ Fix two ship-blocker bugs (Tier 5 `empty_contexts`, Tier 4 graphml regen), add a
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Tier 5 Adapter Fix** - Walk `RunResult.new_items` for `ToolCallOutputItem.output` so Tier 5 stops returning 30/30 `empty_contexts`, smoke-tested before any full rerun ✓ 2026-05-04 (smoke PASS 5/5, ratio 1.00)
-- [~] **Phase 2: Tier 4 Graphml Regeneration** - Wipe `rag_anything_storage/tier-4-multimodal/`, re-ingest from MineRU JSON parsed outside the sandbox, smoke-tested before any full rerun [3/3 plans delivered 2026-05-05; smoke gate FAIL on judge max_tokens (NOT a graph regression — n_populated=5/5, ratio=1.0); pending one-line gap-closure in score.py max_tokens=8192]
+- [x] **Phase 2: Tier 4 Graphml Regeneration** - Wipe `rag_anything_storage/tier-4-multimodal/`, re-ingest from MineRU JSON parsed outside the sandbox, smoke-tested before any full rerun ✓ 2026-05-05 [4/4 plans delivered; gap closure landed via Plan 02-04: JUDGE_MAX_TOKENS=8192 in score._build_judge → Tier 4 smoke PASS (5/5 faithfulness=1.0) AND Tier 5 smoke PASS (Phase 1 regression check intact)]
 - [ ] **Phase 3: NaN Reason Instrumentation** - Distinguish `empty_contexts` vs `empty_statements` vs `json_parse_failure` in per-row metrics output
 - [ ] **Phase 4: Freeze Tool** - `evaluation/harness/freeze.py` writes immutable `frozen/eval-numbers-vX.Y.md` + sidecar manifest with git SHA, capture timestamps, library versions
 - [ ] **Phase 5: Pipeline Driver** - `evaluation/harness/pipeline.py` runs capture → score → compare → freeze in one command, with single-tier rerun support
@@ -48,10 +48,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User can run `python -m evaluation.harness.run --tiers 4 --tier-4-from-cache` against 5 smoke-test questions and see populated `retrieved_contexts` in the resulting `queries/tier-4-*.json`
   4. User can confirm the smoke-test 5 questions produce <5/5 `empty_contexts` NaNs (down from 30/30 baseline)
   5. The MineRU + LightRAG + RAG-Anything library versions are recorded so the graph state is reproducible
-**Plans**: 3 plans (2 waves; 02-02 is a parallel non-blocking track for Phase 7 prep — does NOT gate Phase 2 ship)
+**Plans**: 4 plans (3 waves; 02-02 is a parallel non-blocking track for Phase 7 prep — does NOT gate Phase 2 ship; 02-04 is gap closure for the 02-03 smoke FAIL)
 - [x] 02-01-PLAN.md — Wipe + ingest_from_mineru.py + log_graph_stats.py + provenance manifest (TIER-02; 3 tasks — Task 1 ingest helper, Task 2a stats helper + tests, Task 2b live rebuild + manifest) — **COMPLETE 2026-05-05** (smoke-only, 3 papers, Option B)
 - [x] 02-02-PLAN.md — parse_missing_papers.py + host MineRU top-up checkpoint for 4 missing golden_qa papers (TIER-02; **parallel non-blocking — Phase 7 prep**, may resolve as `verdict=descoped` without blocking Phase 2 ship) — **COMPLETE 2026-05-05** (4/4 papers parsed on host, ~49 min)
-- [~] 02-03-PLAN.md — eval_capture --smoke-question-ids + Tier 4 live smoke test + autonomous capture/score/gate (TIER-03; depends on 02-01 only — smoke-set source papers are in the existing 75-paper cache rebuilt by 02-01) — **DELIVERABLES SHIPPED 2026-05-05; SMOKE GATE FAIL on judge max_tokens (NOT a graph regression — n_populated=5/5, ratio=1.0); pending gap-closure: bump score._build_judge max_tokens=8192**
+- [x] 02-03-PLAN.md — eval_capture --smoke-question-ids + Tier 4 live smoke test + autonomous capture/score/gate (TIER-03; depends on 02-01 only — smoke-set source papers are in the existing 75-paper cache rebuilt by 02-01) — **COMPLETE 2026-05-05** (deliverables shipped; smoke gate FAIL on judge max_tokens routed to Plan 02-04 gap-closure where it was resolved)
+- [x] 02-04-PLAN.md — Gap closure: bump `JUDGE_MAX_TOKENS=8192` in `score._build_judge` (TDD red→green) + re-score Tier 4 against existing capture + double smoke gate (Tier 4 PASS gap + Tier 5 PASS regression check) (TIER-03; gap_closure; depends on score.py only — no graph touch, no re-capture) — **COMPLETE 2026-05-05** (~12 min; commits cdbc376 RED, 7fc6d66 GREEN, plan-metadata for SUMMARY; Tier 4 smoke PASS 5/5 faithfulness=1.0, Tier 5 smoke PASS regression check intact)
 
 ### Phase 3: NaN Reason Instrumentation
 **Goal**: Every NaN in per-row RAGAS metrics output carries a structured `nan_reason` so reviewers can distinguish "tier failed to retrieve" from "judge failed to decompose claims" from "Gemini returned malformed JSON".

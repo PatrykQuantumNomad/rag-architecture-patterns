@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: "Phase 2 Plan 02-03 complete with smoke_gate verdict=FAIL on faithfulness max_tokens (judge-side issue, not Plan 02-01 regression): 5/5 retrieved_contexts populated, ratio=1.0, no Python repr leak; 4/5 faithfulness NaN due to RAGAS extracting atomic statements from long Tier 4 hybrid answers (2011-2575 chars) hitting Gemini's 1024-token output cap. Recommended gap-closure: bump litellm max_tokens=8192 in score._build_judge and re-run score only."
-last_updated: "2026-05-05T14:18:42Z"
-last_activity: "2026-05-05 — Phase 02 Plan 02-03 executed end-to-end: --smoke-question-ids flag landed on eval_capture.py with 12 unit tests, tier4_storage_present fixture + test_eval_smoke_tier4_full_pipeline live test added (collected under -m live), Rule-1 auto-fix for context-probe API drift, full pipeline run: capture (5 records, n_ctx [1,7,1,5,1]) → re-emit → score → smoke_gate verdict=FAIL on faithfulness max_tokens; FAIL surfaced for orchestrator gap-closure routing per plan."
+stopped_at: "Phase 2 Plan 02-04 complete: gap closure landed for the Plan 02-03 FAIL. Bumped JUDGE_MAX_TOKENS=8192 in score._build_judge (TDD red→green; commits cdbc376 + 7fc6d66), re-scored Tier 4 against existing capture (no re-capture, no graph touch), and confirmed smoke_gate verdict=PASS for BOTH Tier 4 (gap closure target — non_nan_faithfulness_count went 1→5) AND Tier 5 (Phase 1 regression check — byte-identical PASS). Phase 2 ship gate now satisfied at smoke-gate level; ROADMAP success criterion #4 (<5/5 empty_contexts NaNs on smoke) cleared with 0/5 NaNs of any reason. Phase 2 fully delivered (4/4 plans complete)."
+last_updated: "2026-05-05T15:17:00Z"
+last_activity: "2026-05-05 — Phase 02 Plan 02-04 executed end-to-end (~12 min): Task 1 TDD added 2 unit tests (test_build_judge_passes_max_tokens, test_build_judge_max_tokens_is_named_constant) — RED commit cdbc376 verified failing then GREEN commit 7fc6d66 added JUDGE_MAX_TOKENS=8192 module-level constant + threaded max_tokens=JUDGE_MAX_TOKENS into llm_factory call (13/13 tests pass); Task 2 re-scored Tier 4 via score --tiers 4 --yes (5/5 faithfulness=1.0, was 4/5 NaN), Tier 4 smoke gate PASS, Tier 5 smoke gate PASS (Phase 1 regression check intact). Rule-3 deviation: project .gitignore excludes evaluation/results/metrics/ and evaluation/results/costs/*.json so the plan's Step E artifact commit was rolled into the SUMMARY commit with verdict JSON captured verbatim for provenance equivalence."
 progress:
   total_phases: 9
-  completed_phases: 1
-  total_plans: 6
-  completed_plans: 6
+  completed_phases: 2
+  total_plans: 7
+  completed_plans: 7
   percent: 100
 ---
 
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** Produce reproducible, honest numbers for the blog — every claim backed by a captured run with full provenance.
-**Current focus:** Phase 2 (Tier 4 Graphml Regeneration) — all 3 plans complete; Plan 02-03 smoke gate verdict=FAIL on judge-side max_tokens (gap-closure routing required before phase ship)
+**Current focus:** Phase 2 (Tier 4 Graphml Regeneration) — all 4 plans complete; Plan 02-04 gap closure landed both Tier 4 (was FAIL) and Tier 5 (Phase 1 regression check) at verdict=PASS; phase ship gate cleared.
 
 ## Current Position
 
-Phase: 2 of 9 (Tier 4 Graphml Regeneration) — all 3 plans complete
-Plan: 3 of 3 complete in Phase 2; Plan 02-03 smoke verdict FAIL surfaced for orchestrator gap-closure routing
-Status: Plan 02-01 landed smoke-only graphml (2886 nodes / 7056 edges, 3 papers); Plan 02-02 top-up MineRU cache to 79 papers (approved, non-blocking); Plan 02-03 deliverables shipped (--smoke-question-ids flag + helper, live smoke test, context-probe API-drift fix), pipeline executed end-to-end, smoke_gate verdict=FAIL on judge faithfulness max_tokens (NOT a Plan 02-01 regression — n_populated=5/5, ratio=1.0)
-Last activity: 2026-05-05 — Phase 02 Plan 02-03 deliverables shipped + FAIL verdict surfaced; full root-cause analysis in 02-03-SUMMARY.md
+Phase: 2 of 9 (Tier 4 Graphml Regeneration) — COMPLETE (all 4 plans delivered, smoke gate PASS, ship gate cleared)
+Plan: 4 of 4 complete in Phase 2; Plan 02-04 closed the Plan 02-03 smoke FAIL via TDD red→green on score.py max_tokens wiring
+Status: Plan 02-01 landed smoke-only graphml (2886 nodes / 7056 edges, 3 papers); Plan 02-02 top-up MineRU cache to 79 papers (approved, non-blocking); Plan 02-03 deliverables shipped (--smoke-question-ids flag + helper, live smoke test, context-probe API-drift fix) + smoke_gate verdict=FAIL surfaced; Plan 02-04 closed the gap with JUDGE_MAX_TOKENS=8192 in score._build_judge — Tier 4 PASS (5/5 faithfulness=1.0) AND Tier 5 PASS (Phase 1 provenance intact).
+Last activity: 2026-05-05 — Phase 02 Plan 02-04 gap closure: TDD red→green for max_tokens wiring + Tier 4 re-score against existing capture + double smoke gate PASS verdict captured verbatim in 02-04-SUMMARY.md.
 
-Progress: [██░░░░░░░░] 22% phase-level (1/9 phases fully complete) | 100% plan-level for active phases (6/6 plans across Phases 1+2)
-Phase 2 plans all delivered but the smoke gate FAIL on faithfulness max_tokens means Phase 2 ship is pending the recommended judge max_tokens bump + score-only re-run.
+Progress: [████░░░░░░] 22% phase-level (1/9 phases fully complete by ROADMAP framing; Phase 2 cleared smoke ship gate but not yet flipped to [x] in ROADMAP — orchestrator's call) | 100% plan-level for active phases (7/7 plans across Phases 1+2)
+Phase 2 ship gate is now CLEARED at the smoke-gate level. Both Tier 4 and Tier 5 smoke verdicts are PASS under the same score._build_judge config, so the score.py change is cross-tier-validated.
 
 ## Performance Metrics
 
@@ -46,12 +46,12 @@ Phase 2 plans all delivered but the smoke gate FAIL on faithfulness max_tokens m
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-tier-5-adapter-fix | 3 | ~22 min | ~7 min |
-| 02-tier-4-graphml-regeneration | 3 | ~130 min (~50 min Plan 02-01 + ~50 min Plan 02-02 host MineRU + ~30 min Plan 02-03) | ~43 min |
+| 02-tier-4-graphml-regeneration | 4 | ~142 min (~50 min Plan 02-01 + ~50 min Plan 02-02 host MineRU + ~30 min Plan 02-03 + ~12 min Plan 02-04) | ~36 min |
 
 **Recent Trend:**
 
-- Last 6 plans: 01-01 (8 min), 01-03 (4 min), 01-02 (~10 min), 02-01 (~50 min), 02-02 (~50 min host MineRU), 02-03 (~30 min Task 1 + Task 2 with 3 capture cycles)
-- Trend: live-ingest plans are 5-10× pure-code plans; smoke verification plans (Plan 02-03) sit in between because they include both pytest-only Task 1 work and live capture/score in Task 2.
+- Last 7 plans: 01-01 (8 min), 01-03 (4 min), 01-02 (~10 min), 02-01 (~50 min), 02-02 (~50 min host MineRU), 02-03 (~30 min Task 1 + Task 2 with 3 capture cycles), 02-04 (~12 min — score-only TDD + re-score + double smoke gate)
+- Trend: live-ingest plans are 5-10× pure-code plans; smoke verification plans (Plan 02-03) sit in between; gap-closure score-only plans (Plan 02-04) are 2-3× pure-code plans (one TDD cycle + one live re-score + two cheap gate calls).
 
 *Updated after each plan completion*
 
@@ -82,6 +82,8 @@ Recent decisions affecting current work:
 - Plan 02-03 ships --smoke-question-ids on tier-4-multimodal/scripts/eval_capture.py with single-source-of-truth import of DEFAULT_SMOKE_IDS from evaluation.harness.run (Pitfall 5 of 02-RESEARCH.md). 12 unit tests cover the new pure helper _filter_qa(); test_eval_smoke_tier4_full_pipeline live test added (collected under -m live alongside tier-1 + tier-5).
 - Plan 02-03 Rule-1 auto-fix: eval_capture.py's context probe used `rag.aquery(... param=...)` which fails under RAG-Anything 1.2.10 (signature does not accept `param=`); fix calls `rag.lightrag.aquery(... param=QueryParam(...))` directly, mirroring what RAGAnything itself does internally. Without the fix, retrieved_contexts was empty for all queries, masking real signal.
 - Plan 02-03 smoke verdict: FAIL on faithfulness NaN (4/5 rows). Root cause is RAGAS faithfulness metric's _create_statements step hitting Gemini's 1024-token output cap when extracting atomic claims from long Tier 4 hybrid-mode answers (2011-2575 chars). NOT a Plan 02-01 regression: n_populated=5/5, ratio=1.0, context_precision 5/5 non-NaN, answer_relevancy 5/5 non-NaN, no Python repr leak. Recommended gap-closure: add max_tokens=8192 to score._build_judge's litellm.completion config and re-run score only.
+- Plan 02-04 closed the Plan 02-03 FAIL via the recommended one-line fix: added module-level constant JUDGE_MAX_TOKENS=8192 beside JUDGE_LLM_SLUG_DEFAULT in evaluation/harness/score.py (line 70) and threaded max_tokens=JUDGE_MAX_TOKENS into the llm_factory(...) call inside _build_judge (line 131). Two new unit tests in evaluation/tests/test_eval_score.py monkeypatch ragas.llms.llm_factory + ragas.embeddings.{base.,}embedding_factory and assert the wiring offline (TDD: RED commit cdbc376 → GREEN commit 7fc6d66, all 13 tests pass). Re-scored Tier 4 against existing capture: 5/5 faithfulness=1.0 (was 4/5 NaN). Smoke gate verdict=PASS for Tier 4 (gap closure target) AND Tier 5 (Phase 1 regression check — byte-identical to 2026-05-04 PASS).
+- Plan 02-04 Rule-3 deviation: project .gitignore (set at Phase 131 init) excludes evaluation/results/metrics/ and evaluation/results/costs/*.json as 'regenerable runtime intermediates'. The plan's Step E artifact commit was incompatible with this convention (which Plan 02-03 already followed); adapted to roll Step E into the SUMMARY commit with both SmokeGateResult JSON blocks captured verbatim in 02-04-SUMMARY.md for provenance equivalence. No Rule 4 architectural change made.
 
 ### Pending Todos
 
@@ -93,7 +95,8 @@ None yet.
 - OpenRouter passthrough may obscure the exact Gemini model version (`gemini-2.5-flash-001` vs bare `gemini-2.5-flash`) for provenance; Phase 9 must document the version-unknown case explicitly if unresolvable
 - Phase 7 pre-rerun ingest must process 72 remaining papers (`tier-4-multimodal/output/` minus 3 smoke papers minus 4 Plan-02-02 fresh-MineRU papers); projected wall ~15–25h / cost ~$15–35
 - Phase 7 ingest run will hit OpenRouter vision-LLM `400 Invalid URL format` errors on larger figures (base64 image data exceeding URL length limit); recommend pre-warming `kv_store_llm_response_cache.json` or routing vision direct to OpenAI/Gemini (off-OpenRouter) to mitigate
-- **Plan 02-03 smoke gate FAIL pending gap-closure**: faithfulness max_tokens NaN on 4/5 Tier 4 smoke rows. Methodology fix needed: bump litellm `max_tokens=8192` in `evaluation/harness/score.py::_build_judge` and re-run `python -m evaluation.harness.score --tiers 4 --yes` against the existing capture (`evaluation/results/queries/tier-4-2026-05-05T13_59_50Z.json`). One-line code change with bounded cost impact; should land before Phase 7 to avoid the same FAIL on full-corpus Tier 4 score. Defense-in-depth follow-up: parse cost from raised-exception completion bodies in score.py so judge cost ledger doesn't underreport when retries fail.
+- ~~Plan 02-03 smoke gate FAIL pending gap-closure~~ **CLEARED 2026-05-05 by Plan 02-04** — JUDGE_MAX_TOKENS=8192 wired into score._build_judge, Tier 4 re-scored, smoke gate PASS for both Tier 4 (gap target) and Tier 5 (regression check). See 02-04-SUMMARY.md for verbatim verdict JSON.
+- **Judge cost ledger underreports on LiteLLM completions**: Plan 02-04's new `ragas-judge-tier-4-20260505T151051Z.json` records $0 despite real spend (smaller now since no retries, but still non-zero per OpenRouter dashboard). Tracked as v1.1 follow-up — augment score.py to parse usage from LiteLLM ModelResponse bodies even when token_usage_parser misses calls. Cross-referenced in both 02-03-SUMMARY.md and 02-04-SUMMARY.md.
 
 ## Deferred Items
 
@@ -110,6 +113,6 @@ Items acknowledged and carried forward as v1.1+:
 
 ## Session Continuity
 
-Last session: 2026-05-05T14:18:42Z
-Stopped at: Phase 2 Plan 02-03 deliverables shipped (--smoke-question-ids flag, _filter_qa helper, 12 unit tests, tier4_storage_present fixture, test_eval_smoke_tier4_full_pipeline live test, Rule-1 context-probe fix), pipeline executed end-to-end, smoke_gate verdict=FAIL surfaced for gap-closure. All 6 plans done; phase ship pending the score.py max_tokens bump + score-only re-run.
-Resume file: .planning/phases/02-tier-4-graphml-regeneration/02-03-SUMMARY.md
+Last session: 2026-05-05T15:17:00Z
+Stopped at: Phase 2 Plan 02-04 gap closure complete: JUDGE_MAX_TOKENS=8192 landed in score._build_judge via TDD red→green (commits cdbc376 + 7fc6d66), Tier 4 re-scored against existing capture (5/5 faithfulness=1.0), Tier 4 smoke gate PASS, Tier 5 smoke gate PASS (Phase 1 regression check intact). Phase 2 ship gate cleared at smoke-gate level; all 7 plans across Phases 1+2 complete. Orchestrator can now route to Phase 3+ (NaN reason instrumentation, freeze tool, pipeline driver, embedder provenance — all parallel-friendly per ROADMAP overview).
+Resume file: .planning/phases/02-tier-4-graphml-regeneration/02-04-SUMMARY.md
