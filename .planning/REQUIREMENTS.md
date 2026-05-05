@@ -23,7 +23,7 @@ New code added under `evaluation/harness/` to make capture → score → rollup 
 - [ ] **HARN-02**: User can re-run only one tier (e.g. `--tiers 4`) without invalidating the captured runs of other tiers (relies on `_latest()` mtime resolution in `compare.py`)
 - [ ] **HARN-03**: User can produce a frozen artifact via `evaluation/harness/freeze.py` that refuses to clobber an existing `frozen/eval-numbers-vX.Y.md` — frozen docs are immutable once written
 - [ ] **HARN-04**: User can read a sidecar `frozen/eval-numbers-vX.Y.manifest.json` recording the git SHA, capture timestamps per tier, judge model, generation models per tier, and all relevant library versions (lightrag-hku, raganything, openai-agents, ragas)
-- [ ] **HARN-05**: User can distinguish RAGAS NaN reasons (`empty_contexts` vs. `empty_statements` vs. `json_parse_failure`) in per-row metrics output rather than seeing a single `NaN`
+- [x] **HARN-05**: User can distinguish RAGAS NaN reasons (`empty_contexts` vs. `empty_statements` vs. `json_parse_failure`) in per-row metrics output rather than seeing a single `NaN`
 
 ### Capture & Bias
 
@@ -90,7 +90,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HARN-02 | Phase 5 | Pending |
 | HARN-03 | Phase 4 | Pending |
 | HARN-04 | Phase 4 | Pending |
-| HARN-05 | Phase 3 | Pending |
+| HARN-05 | Phase 3 | Complete |
 | CAP-01 | Phase 7 | Pending |
 | CAP-02 | Phase 8 | Pending |
 | CAP-03 | Phase 6 | Pending |
