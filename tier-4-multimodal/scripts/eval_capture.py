@@ -157,9 +157,15 @@ async def _capture(args, console: Console) -> int:
 
         contexts: list[str] = []
         try:
+            # RAG-Anything 1.2.10's `aquery` does NOT accept ``param=`` — it forwards
+            # **kwargs into QueryParam(mode=mode, **kwargs) and routes through
+            # aquery_vlm_enhanced when vision_model_func is bound, which then ignores
+            # only_need_context anyway. Call the underlying lightrag.aquery directly
+            # so we get the raw context string the smoke gate expects.
             from lightrag import QueryParam
-            ctx_str = await rag.aquery(
-                question, param=QueryParam(mode=args.mode, only_need_context=True)
+            ctx_str = await rag.lightrag.aquery(
+                question,
+                param=QueryParam(mode=args.mode, only_need_context=True),
             )
             if ctx_str:
                 contexts = [c.strip() for c in str(ctx_str).split("-----") if c.strip()]

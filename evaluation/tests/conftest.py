@@ -34,3 +34,26 @@ def tier1_index_present():
             f"Tier 1 ChromaDB index not found at {chroma_path}. "
             "Run `python tier-1-naive/main.py --ingest` first."
         )
+
+
+@pytest.fixture
+def tier4_storage_present():
+    """Skip if rag_anything_storage/tier-4-multimodal/ graphml is missing.
+
+    Plan 02-01 rebuilds the graph; if a contributor wipes storage and
+    forgets to re-run the rebuild, the live Tier 4 smoke test should
+    skip cleanly rather than hard-fail with a confusing RAGAnything
+    error.
+    """
+    graphml = (
+        _REPO_ROOT
+        / "rag_anything_storage"
+        / "tier-4-multimodal"
+        / "graph_chunk_entity_relation.graphml"
+    )
+    if not graphml.exists():
+        pytest.skip(
+            f"Tier 4 storage missing at {graphml}. "
+            "Run `python tier-4-multimodal/scripts/ingest_from_mineru.py "
+            "--reset --yes` first (per Plan 02-01)."
+        )

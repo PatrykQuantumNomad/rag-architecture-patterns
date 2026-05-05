@@ -279,3 +279,182 @@ def test_eval_smoke_tier5_full_pipeline(live_eval_keys_ok, tier1_index_present, 
         f"Adapter walk produced ZERO populated rows — the Plan 01-01 fix may "
         f"have regressed. Message: {result.message}"
     )
+
+
+@pytest.mark.live
+def test_eval_smoke_tier4_full_pipeline(
+    live_eval_keys_ok, tier4_storage_present, tmp_path, monkeypatch
+):
+    """Phase 2 Plan 02-03 Tier 4 smoke: 5 hand-picked questions through
+    eval_capture (live RAG-Anything against the rebuilt graphml) → run.amain
+    cached re-emit → score → smoke_gate.
+
+    Mirrors ``test_eval_smoke_tier5_full_pipeline`` but with two structural
+    differences:
+
+    1. Stage 1 is the local helper ``tier-4-multimodal/scripts/eval_capture.py``
+       (loaded via importlib.spec since the script lives in a non-package
+       directory). Its constants ``RESULTS_QUERIES`` and the working dir of
+       ``CostTracker.persist()`` are redirected via monkeypatch to ``tmp_path``
+       so a real evaluation/results/queries/ run isn't accidentally produced.
+    2. Stage 2 invokes ``run.amain --tiers 4 --tier-4-from-cache <captured>``
+       (cached-mode adapter re-emits canonical names under tmp_path).
+
+    Per the plan's verification semantics: the smoke_gate verdict is the
+    gate-of-record — Plan 02-03 has NO human-verify checkpoint. This test is
+    a guardrail (asserts the pipeline produces structured output and the
+    populated-row count is consistent with the Phase 1 D-04 PASS gate).
+
+    Source papers (smoke set): 2005.11401, 2004.04906, 2002.08909 — all
+    ingested by Plan 02-01 into the rebuilt graphml.
+
+    Cost guard: 5 questions × ~$0.0015 capture + ~$0.003 judge ≈ $0.0225
+    per run; well under the $0.05 Pitfall-7 cost guard.
+
+    Asserts (defensive — live API behavior is non-deterministic):
+      - n_total == 5 (smoke set size)
+      - PASS, OR
+      - INCONCLUSIVE with all rows excluded (Pitfall 8/9 escape hatch — flaky
+        API ate the smoke), OR
+      - FAIL with at least 1 populated row (soft evidence the rebuilt graph
+        + cached-mode adapter are partially working).
+    """
+    import importlib.util
+    import sys
+
+    from evaluation.harness import run as run_mod
+    from evaluation.harness import score as score_mod
+    from evaluation.harness.records import read_query_log
+    from evaluation.harness.smoke_gate import evaluate_smoke
+
+    # --- Stage 1: capture via tier-4-multimodal/scripts/eval_capture.py ---
+    # Load the script via importlib (mirrors the unit-test loader).
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    script_path = (
+        repo_root / "tier-4-multimodal" / "scripts" / "eval_capture.py"
+    )
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+    spec = importlib.util.spec_from_file_location(
+        "eval_capture_live", script_path
+    )
+    assert spec is not None and spec.loader is not None
+    eval_capture = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(eval_capture)
+
+    # Redirect output to tmp_path so we don't pollute evaluation/results/.
+    capture_queries_dir = tmp_path / "queries"
+    capture_queries_dir.mkdir()
+    monkeypatch.setattr(eval_capture, "RESULTS_QUERIES", capture_queries_dir)
+
+    # Build argparse Namespace via the script's own parser to mirror real CLI use.
+    smoke_ids_csv = ",".join(run_mod.DEFAULT_SMOKE_IDS)
+    cap_args = eval_capture.build_parser().parse_args(
+        [
+            "--smoke-question-ids", smoke_ids_csv,
+            "--mode", "hybrid",
+            "--yes",
+        ]
+    )
+
+    from rich.console import Console as RichConsole
+    cap_rc = asyncio.run(eval_capture._capture(cap_args, RichConsole()))
+    assert cap_rc == 0, f"eval_capture._capture returned non-zero ({cap_rc})"
+
+    # Locate the captured query log under tmp_path.
+    candidates = sorted(
+        capture_queries_dir.glob("tier-4-*.json"), key=lambda p: p.stat().st_mtime
+    )
+    assert candidates, f"No tier-4 query log produced under {capture_queries_dir}"
+    captured_log_path = candidates[-1]
+
+    # Sanity: 5 records, no Python repr leak in retrieved_contexts.
+    captured_log = read_query_log(captured_log_path)
+    assert len(captured_log.records) == 5, (
+        f"Expected 5 captured records, got {len(captured_log.records)}; "
+        "--smoke-question-ids filtering may be broken."
+    )
+    for rec in captured_log.records:
+        for ctx in rec.retrieved_contexts:
+            # Pitfall 1 of 132-RESEARCH: a Python repr leak (e.g. "'paper_id': '...'")
+            # in retrieved_contexts indicates the cached-mode adapter is leaking
+            # raw_item shape — the Phase 1 fix-and-forget guard catches it here.
+            assert "'paper_id'" not in ctx, (
+                f"Python repr leak in retrieved_contexts of {rec.question_id}: "
+                f"{ctx[:200]!r}"
+            )
+
+    # --- Stage 2: re-emit via run.amain in cached mode under tmp_path ---
+    run_args = run_mod.build_parser().parse_args(
+        [
+            "--tiers", "4",
+            "--tier-4-from-cache", str(captured_log_path),
+            "--smoke-question-ids", smoke_ids_csv,
+            "--yes",
+            "--output-dir", str(tmp_path),
+        ]
+    )
+    run_rc = asyncio.run(run_mod.amain(run_args, RichConsole()))
+    assert run_rc == 0, f"run.amain returned non-zero ({run_rc})"
+
+    queries_dir = tmp_path / "queries"
+    candidates = sorted(
+        queries_dir.glob("tier-4-*.json"), key=lambda p: p.stat().st_mtime
+    )
+    assert candidates, f"No tier-4 query log re-emitted under {queries_dir}"
+    query_log_path = candidates[-1]
+
+    log = read_query_log(query_log_path)
+    assert len(log.records) == 5, (
+        f"Expected 5 records after re-emit, got {len(log.records)}; "
+        f"the cached adapter may have skipped rows."
+    )
+
+    # --- Stage 3: score in-process (locked: in-process per Open Q1 RESOLVED) ---
+    qa_index = score_mod._load_golden_qa_index()
+    judge_llm, judge_emb = score_mod._build_judge(
+        score_mod.JUDGE_LLM_SLUG_DEFAULT,
+        score_mod.JUDGE_EMB_SLUG_DEFAULT,
+    )
+    scores, _usage = asyncio.run(
+        score_mod.score_query_log(
+            log,
+            qa_index,
+            judge_llm=judge_llm,
+            judge_emb=judge_emb,
+            batch_size=10,
+            raise_exceptions=False,
+        )
+    )
+    assert len(scores) == 5, f"Expected 5 ScoreRecords, got {len(scores)}"
+
+    # --- Stage 4: smoke gate ---
+    result = evaluate_smoke(log, scores)
+    assert result.n_total == 5, (
+        f"SmokeGateResult.n_total={result.n_total}; expected 5"
+    )
+
+    # Print full result so `pytest -s` shows it.
+    print("\n--- Tier 4 SmokeGateResult ---")
+    print(result.model_dump_json(indent=2))
+
+    if result.verdict == "PASS":
+        return  # happy path
+    if (
+        result.verdict == "INCONCLUSIVE"
+        and (result.n_agent_truncated + result.n_empty_no_tool_calls) == 5
+    ):
+        # Pitfall 8/9 escape hatch — flaky API ate the smoke, no measurable cells.
+        pytest.skip(
+            f"INCONCLUSIVE — all 5 rows excluded (truncated={result.n_agent_truncated}, "
+            f"empty={result.n_empty_no_tool_calls}). Re-run after API hiccup clears. "
+            f"Message: {result.message}"
+        )
+    # On FAIL: assert at least 1 populated row landed (soft evidence the rebuild
+    # produced a queryable graph). The plan's verify gate (CLI smoke_gate
+    # invocation) is the harder gate-of-record.
+    assert result.n_populated >= 1, (
+        f"verdict={result.verdict}; populated={result.n_populated}/5. "
+        f"Cached-mode adapter produced ZERO populated rows — the Plan 02-01 "
+        f"rebuild may have regressed or the cache is empty. Message: {result.message}"
+    )
