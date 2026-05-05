@@ -21,8 +21,8 @@ New code added under `evaluation/harness/` to make capture → score → rollup 
 
 - [ ] **HARN-01**: User can run `python -m evaluation.harness.pipeline --tiers 1,2,3,4,5` to execute capture → score → rollup → freeze in one command, with a single git SHA and ISO timestamp captured at start
 - [ ] **HARN-02**: User can re-run only one tier (e.g. `--tiers 4`) without invalidating the captured runs of other tiers (relies on `_latest()` mtime resolution in `compare.py`)
-- [ ] **HARN-03**: User can produce a frozen artifact via `evaluation/harness/freeze.py` that refuses to clobber an existing `frozen/eval-numbers-vX.Y.md` — frozen docs are immutable once written
-- [ ] **HARN-04**: User can read a sidecar `frozen/eval-numbers-vX.Y.manifest.json` recording the git SHA, capture timestamps per tier, judge model, generation models per tier, and all relevant library versions (lightrag-hku, raganything, openai-agents, ragas)
+- [x] **HARN-03**: User can produce a frozen artifact via `evaluation/harness/freeze.py` that refuses to clobber an existing `frozen/eval-numbers-vX.Y.md` — frozen docs are immutable once written ✓ 2026-05-05 (Phase 4 Plan 04-01: refuse-clobber wording `"already frozen — bump version or pass --force"` exits 2; --force overwrites both md AND manifest; verified by tests test_freeze_refuses_clobber + test_freeze_force_overwrites + CLI quality gate sub-checks 1+2+3)
+- [x] **HARN-04**: User can read a sidecar `frozen/eval-numbers-vX.Y.manifest.json` recording the git SHA, capture timestamps per tier, judge model, generation models per tier, and all relevant library versions (lightrag-hku, raganything, openai-agents, ragas) ✓ 2026-05-05 (Phase 4 Plan 04-01: manifest carries `$schema_version` + `version` + `frozen_at` ISO 8601 Z + `git_sha` + `git_dirty` + `source_markdown` + `source_markdown_mtime` + `frozen_markdown` + `judge {model, embedder, max_tokens=8192}` + `per_tier {tier-1..tier-5: status:present + generation_model + capture_timestamp + capture_git_sha + queries/cost/metrics relative paths + mtimes}` + `library_versions {lightrag-hku 1.4.15, raganything 1.2.10, openai-agents 0.14.6, ragas 0.4.3, litellm 1.83.0, chromadb 1.5.8}` + `python_version`; verified by tests test_manifest_top_level_fields + test_manifest_per_tier_provenance + test_manifest_library_versions + test_manifest_judge_block + test_manifest_missing_tier + CLI gate 5)
 - [x] **HARN-05**: User can distinguish RAGAS NaN reasons (`empty_contexts` vs. `empty_statements` vs. `json_parse_failure`) in per-row metrics output rather than seeing a single `NaN`
 
 ### Capture & Bias
@@ -88,8 +88,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TIER-03 | Phase 1 + Phase 2 (split: Tier 5 smoke in P1, Tier 4 smoke in P2) | P1 half complete (2026-05-04, Tier 5 smoke PASS); P2 half deliverables shipped (2026-05-05, Plan 02-03) but smoke gate FAIL on judge max_tokens — pending one-line gap-closure in score.py before requirement is fully satisfied |
 | HARN-01 | Phase 5 | Pending |
 | HARN-02 | Phase 5 | Pending |
-| HARN-03 | Phase 4 | Pending |
-| HARN-04 | Phase 4 | Pending |
+| HARN-03 | Phase 4 | Complete (2026-05-05; Plan 04-01 commits 9588056 RED + 7881e87 GREEN; refuse-clobber wording verified by test_freeze_refuses_clobber + CLI gate 2; --force overwrite verified by test_freeze_force_overwrites + CLI gate 3) |
+| HARN-04 | Phase 4 | Complete (2026-05-05; Plan 04-01 commits 9588056 RED + 7881e87 GREEN; sidecar manifest with $schema_version + git_sha + git_dirty + frozen_at + per-tier provenance + library_versions for 4 critical libs verified by test_manifest_top_level_fields + test_manifest_per_tier_provenance + test_manifest_library_versions + test_manifest_judge_block + test_manifest_missing_tier + CLI gate 5) |
 | HARN-05 | Phase 3 | Complete (2026-05-05; end-to-end delivery: Plan 03-01 NaNReasonTracer + _classify_post_evaluate_nan units via TDD red→green commits e97e864 + bc80825; Plan 03-02 wiring into score_query_log via callbacks=[tracer] + per-metric precedence chain in commit fe52528; Plan 03-03 live smoke backstop test_eval_smoke_nan_reasons asserting n_unknown_nan==0 against real Gemini 2.5 Flash output, verdict PASS in commit 512ad54) |
 | CAP-01 | Phase 7 | Pending |
 | CAP-02 | Phase 8 | Pending |

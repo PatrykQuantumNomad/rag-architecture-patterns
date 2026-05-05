@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Tier 5 Adapter Fix** - Walk `RunResult.new_items` for `ToolCallOutputItem.output` so Tier 5 stops returning 30/30 `empty_contexts`, smoke-tested before any full rerun ✓ 2026-05-04 (smoke PASS 5/5, ratio 1.00)
 - [x] **Phase 2: Tier 4 Graphml Regeneration** - Wipe `rag_anything_storage/tier-4-multimodal/`, re-ingest from MineRU JSON parsed outside the sandbox, smoke-tested before any full rerun ✓ 2026-05-05 [4/4 plans delivered; gap closure landed via Plan 02-04: JUDGE_MAX_TOKENS=8192 in score._build_judge → Tier 4 smoke PASS (5/5 faithfulness=1.0) AND Tier 5 smoke PASS (Phase 1 regression check intact)]
 - [x] **Phase 3: NaN Reason Instrumentation** - Distinguish `empty_contexts` vs `empty_statements` vs `json_parse_failure` in per-row metrics output ✓ 2026-05-05 [3/3 plans delivered; HARN-05 closed at unit (03-01) + integration (03-02) + live (03-03) levels; live smoke verdict PASS, n_unknown_nan=0 against real Gemini 2.5 Flash on 5-question Tier 5 capture, ~$0.014 cost vs $0.05 cost guard]
-- [ ] **Phase 4: Freeze Tool** - `evaluation/harness/freeze.py` writes immutable `frozen/eval-numbers-vX.Y.md` + sidecar manifest with git SHA, capture timestamps, library versions
+- [x] **Phase 4: Freeze Tool** - `evaluation/harness/freeze.py` writes immutable `frozen/eval-numbers-vX.Y.md` + sidecar manifest with git SHA, capture timestamps, library versions ✓ 2026-05-05 [1/1 plan delivered; HARN-03 + HARN-04 closed at unit + CLI levels; freeze.py at exactly 95 LOC honoring max_lines:95 hard cap; sidecar manifest carries git_sha + git_dirty + ISO 8601 Z frozen_at + per-tier capture/cost/metrics relative paths + mtimes + judge {model, embedder, max_tokens=8192} + library_versions for the 4 critical libs (lightrag-hku 1.4.15 / raganything 1.2.10 / openai-agents 0.14.6 / ragas 0.4.3) + 2 bonus (litellm 1.83.0, chromadb 1.5.8); refuse-to-clobber default with prescribed wording; --force overwrites both md AND manifest; RuntimeError + exit 2 BEFORE any file write if any of the 4 critical libs missing; Phase 5 forward-contract signature locked at `freeze(version, force, results_dir, source) -> Path`; zero modifications to run.py / compare.py / score.py]
 - [ ] **Phase 5: Pipeline Driver** - `evaluation/harness/pipeline.py` runs capture → score → compare → freeze in one command, with single-tier rerun support
 - [ ] **Phase 6: Embedder Provenance Capture** - Per-tier embedder model name recorded in capture JSON so the embedder-confound disclosure is data-backed
 - [ ] **Phase 7: Full 5-Tier Rerun** - Capture all 5 tiers × 30 questions on one date with one git SHA, NaN counts down to expected residuals
@@ -76,7 +76,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. User can re-run the freeze command and see it refuse with a clear error message ("eval-numbers-v1.0.md already frozen — bump version or pass --force") — frozen docs do not silently overwrite
   3. User can read `evaluation/results/frozen/eval-numbers-v1.0.manifest.json` and find: git SHA, freeze timestamp, per-tier capture/score/metrics source paths with mtimes, judge model, generation model per tier, and pinned versions of `lightrag-hku`, `raganything`, `openai-agents`, `ragas`
   4. User can confirm `freeze.py` is approximately 60 LOC of pure-Python (no new external deps) and lives at `evaluation/harness/freeze.py`
-**Plans**: TBD
+**Plans**: 1 plan (1 wave)
+- [x] 04-01-PLAN.md — TDD red→green for evaluation/harness/freeze.py (HARN-03 + HARN-04; pure-Python CLI + in-process freeze() function for Phase 5; 10 unit tests + CLI quality gate; ~74 LOC ±15 tolerance, hard cap 95) — **COMPLETE 2026-05-05** (~18 min wall; commits 9588056 RED, 7881e87 GREEN; 95 LOC freeze.py exactly at hard cap; 10/10 tests PASS; full offline suite 88 passed excluding pre-existing tier_2.py adapter fail; 5/5 CLI quality gate sub-checks PASS; live artifacts deleted post-verification; Phase 5 forward-contract locked)
 
 ### Phase 5: Pipeline Driver
 **Goal**: Capture → score → compare → freeze runs as one command with a single git SHA and ISO timestamp captured at start, and re-running a single tier does not invalidate the captured runs of the other four.
@@ -145,7 +146,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 1. Tier 5 Adapter Fix | 3/3 | ✓ Verified | 2026-05-04 |
 | 2. Tier 4 Graphml Regeneration | 4/4 | ✓ Verified | 2026-05-05 |
 | 3. NaN Reason Instrumentation | 3/3 | ✓ Verified | 2026-05-05 |
-| 4. Freeze Tool | 0/TBD | Not started | - |
+| 4. Freeze Tool | 1/1 | ✓ Complete | 2026-05-05 |
 | 5. Pipeline Driver | 0/TBD | Not started | - |
 | 6. Embedder Provenance Capture | 0/TBD | Not started | - |
 | 7. Full 5-Tier Rerun | 0/TBD | Not started | - |
