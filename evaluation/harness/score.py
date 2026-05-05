@@ -63,6 +63,12 @@ SUPPORTED_TIERS = (1, 2, 3, 4, 5)
 JUDGE_LLM_SLUG_DEFAULT = "openrouter/google/gemini-2.5-flash"
 JUDGE_EMB_SLUG_DEFAULT = "openrouter/openai/text-embedding-3-small"
 
+# Plan 02-04 gap closure: bump from RAGAS default of 1024 to fit
+# faithfulness atomic-statement extraction on long Tier 4 hybrid answers
+# (2011-2575 chars on smoke set). Gemini 2.5 Flash output cap is 65,536,
+# so 8192 is well within model limits and bounded-cost.
+JUDGE_MAX_TOKENS = 8192
+
 
 def _strip_openrouter_prefix(slug: str) -> str:
     """Strip the ``openrouter/`` prefix from a LiteLLM slug for PRICES lookup.
@@ -105,6 +111,11 @@ def _build_judge(judge_model: str, judge_emb: str):
     Plan 01 SUMMARY confirmed `from ragas.embeddings.base import embedding_factory`
     works in 0.4.3, but we keep a fallback to `from ragas.embeddings import ...`
     for forward-compat with future patches that may relocate the symbol.
+
+    Plan 02-04 gap closure: passes ``max_tokens=JUDGE_MAX_TOKENS`` (8192) to
+    ``llm_factory`` so RAGAS faithfulness ``_create_statements`` can fit the
+    atomic-statement list output for long Tier 4 hybrid-mode answers
+    (Plan 02-03 surfaced 4/5 NaN under the RAGAS default of 1024).
     """
     import litellm
     from ragas.llms import llm_factory
@@ -113,7 +124,12 @@ def _build_judge(judge_model: str, judge_emb: str):
     except ImportError:
         from ragas.embeddings import embedding_factory  # fallback if 0.4.x patches relocated
 
-    llm = llm_factory(judge_model, provider="litellm", client=litellm.completion)
+    llm = llm_factory(
+        judge_model,
+        provider="litellm",
+        client=litellm.completion,
+        max_tokens=JUDGE_MAX_TOKENS,
+    )
     emb = embedding_factory("litellm", model=judge_emb)
     # RAGAS 0.4.3's LiteLLMEmbeddings exposes embed_text / embed_texts (and
     # async variants) but some metric internals still call the legacy
