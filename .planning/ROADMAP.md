@@ -62,7 +62,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. User can read any `metrics/tier-{N}-*.json` produced after this phase and see a per-row `nan_reason` field with one of `empty_contexts`, `empty_statements`, `json_parse_failure`, or `null` (no NaN)
   2. User can confirm `evaluation/harness/score.py`'s `_short_circuit_nan()` already-present pattern is extended to tag the new reasons rather than swallowing them as a single `nan_reason="nan"`
   3. User can confirm the rollup in `comparison.md` aggregates NaN counts by reason (e.g., `tier-5: 2 empty_contexts, 1 empty_statements`) rather than a single opaque `n_NaN`
-**Plans**: TBD
+**Plans**: 3 plans (3 waves; W1 TDD-only pure units, W2 wiring + integration + compare regression, W3 live smoke backstop with checkpoint:human-verify)
+- [ ] 03-01-PLAN.md — TDD red→green for NaNReasonTracer + _classify_post_evaluate_nan pure helpers (HARN-05; type:tdd; 2 tasks)
+- [ ] 03-02-PLAN.md — Wire tracer into score_query_log + integration tests with stub LLMs + compare.py rollup regression test proving zero compare.py change needed (HARN-05; depends_on 03-01)
+- [ ] 03-03-PLAN.md — Live smoke backstop asserting unknown_nan==0 against existing Tier 5 capture; non-autonomous human-verify checkpoint (HARN-05; depends_on 03-02)
 
 ### Phase 4: Freeze Tool
 **Goal**: A single command produces an immutable, copy-pasteable frozen markdown artifact under `evaluation/results/frozen/` with a sidecar manifest that records exactly which capture / score / compare files fed it and at what git SHA.
@@ -141,7 +144,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Tier 5 Adapter Fix | 3/3 | ✓ Verified | 2026-05-04 |
 | 2. Tier 4 Graphml Regeneration | 4/4 | ✓ Verified | 2026-05-05 |
-| 3. NaN Reason Instrumentation | 0/TBD | Not started | - |
+| 3. NaN Reason Instrumentation | 0/3 | Not started | - |
 | 4. Freeze Tool | 0/TBD | Not started | - |
 | 5. Pipeline Driver | 0/TBD | Not started | - |
 | 6. Embedder Provenance Capture | 0/TBD | Not started | - |
