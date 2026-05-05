@@ -458,3 +458,85 @@ def test_eval_smoke_tier4_full_pipeline(
         f"Cached-mode adapter produced ZERO populated rows — the Plan 02-01 "
         f"rebuild may have regressed or the cache is empty. Message: {result.message}"
     )
+
+
+@pytest.mark.live
+def test_eval_smoke_nan_reasons(live_eval_keys_ok, tmp_path):
+    """Phase 3 Plan 03-03 — live backstop: score the existing Tier 5 smoke
+    capture through the new NaNReasonTracer + _classify_post_evaluate_nan
+    wiring (Plan 03-02), assert ZERO rows have nan_reason='unknown_nan'.
+
+    Cost guard: 5 questions × 3 metrics × ~3 internal judge calls × ~$0.0003
+    per call ≈ $0.005-0.02 per run. Well under $0.05 (Pitfall 7 of
+    03-RESEARCH.md). The test re-uses the existing capture (no re-capture)
+    so it spends judge LLM cost only.
+
+    unknown_nan == 0 means the classifier covers every real RAGAS 0.4.3 NaN
+    path actually exercised by Tier 5 smoke. If a non-zero count surfaces,
+    the captured exception type or per-metric path needs to be added to
+    _classify_post_evaluate_nan.
+    """
+    import asyncio
+    import json
+    from pathlib import Path
+    from evaluation.harness.records import read_query_log
+    from evaluation.harness.score import (
+        _build_judge,
+        _load_golden_qa_index,
+        score_query_log,
+        JUDGE_LLM_SLUG_DEFAULT,
+        JUDGE_EMB_SLUG_DEFAULT,
+    )
+
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    capture_path = (
+        repo_root / "evaluation" / "results" / "queries"
+        / "tier-5-2026-05-04T18_48_17Z.json"
+    )
+    if not capture_path.exists():
+        pytest.skip(
+            f"Tier 5 smoke capture not present at {capture_path}. "
+            "Run Phase 1 Plan 01-02 (`python -m evaluation.harness.run --tiers 5 "
+            "--smoke-question-ids ...`) first."
+        )
+
+    log = read_query_log(capture_path)
+    qa_index = _load_golden_qa_index()
+    judge_llm, judge_emb = _build_judge(JUDGE_LLM_SLUG_DEFAULT, JUDGE_EMB_SLUG_DEFAULT)
+
+    scores, usage = asyncio.run(score_query_log(
+        log, qa_index, judge_llm=judge_llm, judge_emb=judge_emb,
+        batch_size=5, raise_exceptions=False,
+    ))
+
+    # Backstop assertion: every NaN row carries a CLASSIFIED reason, never the
+    # safety-net "unknown_nan". If this fails, _classify_post_evaluate_nan
+    # missed a real RAGAS NaN path — extend the classifier in score.py.
+    unknown_count = sum(
+        1 for s in scores
+        if s is not None and s.nan_reason == "unknown_nan"
+    )
+    assert unknown_count == 0, (
+        f"{unknown_count} rows have nan_reason='unknown_nan' — extend "
+        f"_classify_post_evaluate_nan in evaluation/harness/score.py. "
+        f"Per-row reasons: {[(s.question_id, s.nan_reason) for s in scores]}"
+    )
+
+    # Sanity: tracer wiring is alive — at least 1 record was scored
+    # (vs all short-circuited pre-evaluate)
+    n_scored = sum(1 for s in scores if s is not None and s.nan_reason != "empty_contexts"
+                   and s.nan_reason != "agent_truncated"
+                   and s.nan_reason != "tier4_unavailable"
+                   and s.nan_reason != "cached_miss")
+    assert n_scored >= 1, (
+        "All Tier 5 smoke records short-circuited pre-evaluate — "
+        "live judge wiring not actually exercised. Phase 1 fix may have regressed."
+    )
+
+    # Cost guard surfaced in test stdout (read by checkpoint:human-verify)
+    print(
+        f"\n[Plan 03-03 live smoke] n_total={len(scores)} "
+        f"n_unknown_nan={unknown_count} n_scored_post_short_circuit={n_scored} "
+        f"judge_input_tokens={usage.get('input_tokens')} "
+        f"judge_output_tokens={usage.get('output_tokens')}"
+    )
