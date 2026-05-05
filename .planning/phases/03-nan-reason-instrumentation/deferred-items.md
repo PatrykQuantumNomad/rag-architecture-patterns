@@ -38,3 +38,44 @@ out of scope).
 
 Neither failure is caused by Plan 03-02's changes; both are out of scope
 per RULE 4 and surface to be addressed in their respective owning plans.
+
+## Plan 03-03 (2026-05-05)
+
+### Process deviation routed through user-approved checkpoint:decision
+
+**Live test deselect-by-default gap in pyproject.toml** (NEW v1.1 hardening item):
+
+- **Issue surfaced when:** A previous agent (Plan 03-03 Task 1 verification) ran
+  `pytest evaluation/tests/test_eval_smoke_live.py -v` (no `-m` filter, no `-s`)
+  to verify the new `test_eval_smoke_nan_reasons` test was deselected by default.
+  The pytest invocation's `-v` plus collection logic actually executed the new
+  live test against the real OpenRouter judge, consuming ~$0.005-0.02 of API
+  budget. Stdout was swallowed because `-s` was missing.
+- **Root cause:** `pyproject.toml` registers the `live` marker under
+  `[tool.pytest.ini_options].markers` but does NOT include
+  `addopts = "-m 'not live'"`. The Phase 1 Plan 01-02 + Phase 2 Plan 02-03 +
+  Plan 03-03 plans all assumed live-deselect-by-default semantics that pytest
+  does not actually enforce without explicit `addopts`.
+- **User-approved recovery:** Orchestrator surfaced the swallowed-stdout
+  deviation as a `checkpoint:decision`. User approved option 1 (re-run the
+  live test ONCE with `-s` to capture verbatim provenance). Total live cost
+  across both invocations bounded at ~$0.028 — well under the $0.05 cost guard.
+  Live verdict captured: `n_total=5 n_unknown_nan=0 n_scored_post_short_circuit=5`.
+- **v1.1 hardening recommendation:** Add `addopts = "-m 'not live'"` to
+  `[tool.pytest.ini_options]` so a bare `pytest path/to/file.py -v` (no -m flag)
+  cannot accidentally consume API budget. Update plan templates + CLAUDE.md to
+  use `-m live -k <test>` explicitly when invoking live tests.
+- **Out of scope per RULE 4:** Pyproject.toml is not in Plan 03-03's
+  files_modified list and the change has cross-cutting impact on every other
+  live test in the repo. Tracked in STATE.md as a v1.1 deferred item; this plan
+  ships exactly as written.
+
+### Re-confirmed: judge cost ledger underreports on LiteLLM completions
+
+Plan 03-03 live verdict reproduced the Plan 02-04 observation that
+`token_usage_parser=get_token_usage_for_openai` does not surface usage from
+LiteLLM `ModelResponse` bodies for some calls — the verbatim stdout shows
+`judge_input_tokens=0 / judge_output_tokens=0` despite real spend
+(~$0.014 estimated by call count). Same v1.1 follow-up tracked in STATE.md
+since Plan 02-04. Cost guard is bounded by question×metric×call count
+regardless: 5 × 3 × ~3 ≈ 45 calls × ~$0.0003 ≈ $0.014, well under $0.05.

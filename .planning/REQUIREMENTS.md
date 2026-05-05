@@ -90,7 +90,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HARN-02 | Phase 5 | Pending |
 | HARN-03 | Phase 4 | Pending |
 | HARN-04 | Phase 4 | Pending |
-| HARN-05 | Phase 3 | Complete |
+| HARN-05 | Phase 3 | Complete (2026-05-05; end-to-end delivery: Plan 03-01 NaNReasonTracer + _classify_post_evaluate_nan units via TDD red→green commits e97e864 + bc80825; Plan 03-02 wiring into score_query_log via callbacks=[tracer] + per-metric precedence chain in commit fe52528; Plan 03-03 live smoke backstop test_eval_smoke_nan_reasons asserting n_unknown_nan==0 against real Gemini 2.5 Flash output, verdict PASS in commit 512ad54) |
 | CAP-01 | Phase 7 | Pending |
 | CAP-02 | Phase 8 | Pending |
 | CAP-03 | Phase 6 | Pending |

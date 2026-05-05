@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Phase 3 Plan 03-01 complete: NaNReasonTracer(BaseCallbackHandler) + _classify_post_evaluate_nan pure helper landed in evaluation/harness/score.py via TDD red→green (commits e97e864 + bc80825). 15 new unit tests, +109 LOC score.py, +253 LOC test_eval_score.py. All 28 tests pass; all 7 verification gates PASS. Zero deviations. Phase 3 progress: 1/3 plans complete. Plan 03-02 will wire NaNReasonTracer into score_query_log's evaluate(callbacks=[tracer], ...) and post-process each row through _classify_post_evaluate_nan to populate ScoreRecord.nan_reason; Plan 03-03 is the live smoke backstop with checkpoint:human-verify."
-last_updated: "2026-05-05T18:10:44.734Z"
+stopped_at: "Phase 3 Plan 03-03 complete: live smoke backstop test test_eval_smoke_nan_reasons added to evaluation/tests/test_eval_smoke_live.py (commit 512ad54) and verified end-to-end against real OpenRouter Gemini 2.5 Flash judge — verdict 2026-05-05 PASS (n_total=5, n_unknown_nan=0, n_scored_post_short_circuit=5; ~$0.014 cost vs $0.05 cost guard). HARN-05 closed at unit (Plan 03-01) + integration (Plan 03-02) + live (Plan 03-03) levels. Phase 3 complete (3/3 plans). Single process deviation routed through user-approved checkpoint:decision: previous agent accidentally executed the live test once during a deselection-check verification step (~$0.005-0.02 extra spend; root cause is pyproject.toml not declaring addopts='-m \"not live\"' — v1.1 hardening). Phase 4 (Freeze Tool) is next."
+last_updated: "2026-05-05T19:15:00.000Z"
 last_activity: 2026-05-05
 progress:
   total_phases: 9
-  completed_phases: 2
-  total_plans: 10
-  completed_plans: 9
-  percent: 90
+  completed_phases: 3
+  total_plans: 11
+  completed_plans: 10
+  percent: 91
 ---
 
 # Project State
@@ -21,25 +21,25 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** Produce reproducible, honest numbers for the blog — every claim backed by a captured run with full provenance.
-**Current focus:** Phase 3 (NaN Reason Instrumentation) — Plan 03-01 complete (units shipped via TDD); Plan 03-02 (wiring into score_query_log + integration tests) is next.
+**Current focus:** Phase 3 complete (NaN Reason Instrumentation, all 3 plans delivered, HARN-05 closed end-to-end). Phase 4 (Freeze Tool) is next.
 
 ## Current Position
 
-Phase: 3 of 9 (NaN Reason Instrumentation) — IN PROGRESS (1/3 plans delivered)
-Plan: 2 of 3 complete in Phase 3; Plan 03-01 shipped NaNReasonTracer + _classify_post_evaluate_nan as standalone testable units via TDD red→green (offline; no live LLM call required)
-Status: Ready to execute
+Phase: 3 of 9 (NaN Reason Instrumentation) — COMPLETE (3/3 plans delivered, HARN-05 closed end-to-end). Next: Phase 4 (Freeze Tool).
+Plan: 3 of 3 complete in Phase 3; Plan 03-03 added test_eval_smoke_nan_reasons live backstop and verified live verdict PASS (n_unknown_nan=0) against real Gemini 2.5 Flash output.
+Status: Ready to execute Phase 4
 Last activity: 2026-05-05
 
-Progress: [█████████░] 90%
-Phase 3 progress: 1/3 plans complete (Plan 03-01 units shipped). HARN-05 closure pending Plan 03-02 wiring + Plan 03-03 live smoke backstop.
+Progress: [█████████░] 91%
+Phase 3 progress: 3/3 plans complete. HARN-05 delivered at unit (03-01) + integration (03-02) + live (03-03) levels.
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 8
-- Average duration: ~21 min (~169 min total / 8 plans)
-- Total execution time: ~2.8 hours
+- Total plans completed: 10
+- Average duration: ~19 min (~191 min total / 10 plans)
+- Total execution time: ~3.2 hours
 
 **By Phase:**
 
@@ -47,15 +47,16 @@ Phase 3 progress: 1/3 plans complete (Plan 03-01 units shipped). HARN-05 closure
 |-------|-------|-------|----------|
 | 01-tier-5-adapter-fix | 3 | ~22 min | ~7 min |
 | 02-tier-4-graphml-regeneration | 4 | ~142 min (~50 min Plan 02-01 + ~50 min Plan 02-02 host MineRU + ~30 min Plan 02-03 + ~12 min Plan 02-04) | ~36 min |
-| 03-nan-reason-instrumentation | 1 of 3 | ~5 min (Plan 03-01 only) | ~5 min |
+| 03-nan-reason-instrumentation | 3 of 3 | ~27 min (~5 min Plan 03-01 + ~12 min Plan 03-02 + ~10 min Plan 03-03 with 78s live test wall) | ~9 min |
 
 **Recent Trend:**
 
-- Last 8 plans: 01-01 (8 min), 01-03 (4 min), 01-02 (~10 min), 02-01 (~50 min), 02-02 (~50 min host MineRU), 02-03 (~30 min Task 1 + Task 2 with 3 capture cycles), 02-04 (~12 min — score-only TDD + re-score + double smoke gate), 03-01 (~5 min — pure-offline TDD for two coupled units)
-- Trend: live-ingest plans are 5-10× pure-code plans; smoke verification plans (Plan 02-03) sit in between; gap-closure score-only plans (Plan 02-04) are 2-3× pure-code plans; pure-offline TDD-only plans (Plan 03-01) are the cheapest at ~5 min wall (no LLM call, no graph touch, no capture re-run — just RED tests + GREEN implementation + verification gates).
+- Last 10 plans: 01-01 (8 min), 01-03 (4 min), 01-02 (~10 min), 02-01 (~50 min), 02-02 (~50 min host MineRU), 02-03 (~30 min Task 1 + Task 2 with 3 capture cycles), 02-04 (~12 min — score-only TDD + re-score + double smoke gate), 03-01 (~5 min — pure-offline TDD for two coupled units), 03-02 (~12 min — wiring + 4 integration tests with stub LLMs + 1 compare regression test, single atomic commit), 03-03 (~10 min wall — 1 live-marked test, 78.78s live invocation, ~$0.014 cost)
+- Trend: live-ingest plans are 5-10× pure-code plans; smoke verification plans (Plan 02-03) sit in between; gap-closure score-only plans (Plan 02-04) are 2-3× pure-code plans; pure-offline TDD-only plans (Plan 03-01) are the cheapest at ~5 min wall; live-smoke-backstop plans (Plan 03-03) are 2× pure-offline (~10 min — code is small, but live test wall is the dominant cost).
 
 *Updated after each plan completion*
 | Phase 03 P02 | 12min | 2 tasks | 3 files |
+| Phase 03 P03 | 10min | 2 tasks | 1 source + 4 docs |
 
 ## Accumulated Context
 
@@ -94,6 +95,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Plan 03-02 wires NaNReasonTracer into score_query_log via callbacks=[tracer] alongside existing kwargs (Pitfall 6 of 03-RESEARCH.md — RAGAS appends its own callbacks rather than replacing); _classify_post_evaluate_nan called per-metric with documented faithfulness > AR > CP precedence in BOTH the dataframe branch AND the result.scores fallback branch (parity for older RAGAS 0.4.x patches). 4 new offline integration tests + 1 compare regression test; no live API spend. Single atomic commit fe52528.
 - [Phase ?]: Plan 03-02 clean-path test assertion relaxed per the plan's own docstring guidance — observed RAGAS 0.4.3 scores _CleanLLM as AR=1.0, CP~=1.0, faithfulness NaN with classified 'json_parse_failure' (RagasOutputParserException on NLI prompt). This is EXACTLY the wiring chain HARN-05 needs. Strict 'is None' replaced with 'in {None, json_parse_failure, llm_did_not_finish, empty_statements, empty_questions, invalid_verdicts}' + disallowed silent-drop state check. Rule-1 deviation tracked in 03-02-SUMMARY.md.
 - [Phase ?]: Plan 03-02 verifies Architectural Responsibility Map claim 'compare.py needs ZERO change for HARN-05' end-to-end: test_aggregate_tier_with_new_reasons exercises BOTH aggregate_tier (nan_breakdown buckets json_parse_failure + empty_statements + empty_contexts) AND emit_markdown footer rendering with new reason strings + joined-sorted breakdown line, all without modifying compare.py. Gate 4 (git diff compare.py == 0 lines) confirms byte-identical.
+- Plan 03-03 live smoke backstop verified — n_unknown_nan=0 against real Gemini judge output. HARN-05 closed at unit + integration + live levels. Live verdict 2026-05-05 PASS: n_total=5, n_unknown_nan=0, n_scored_post_short_circuit=5; ~$0.014 cost (45 judge calls × ~$0.0003) vs $0.05 cost guard; 78.78s wall time. The classifier covers every real RAGAS 0.4.3 NaN path actually exercised by the Tier 5 smoke set against Gemini 2.5 Flash. Phase 7's full 5-tier rerun re-running this same live test against the new captures is the regression check that the wiring continues to cover every actual NaN path post-Phase-3.
+- Plan 03-03 single process deviation routed through user-approved checkpoint:decision: previous agent accidentally executed the live test once during a deselection-check verification step (~$0.005-0.02 extra spend; total live cost across both invocations bounded at ~$0.028 — well under the $0.05 cost guard). Root cause: pyproject.toml registers the `live` marker under `[tool.pytest.ini_options].markers` but does NOT declare `addopts = "-m 'not live'"`, so a bare `pytest path/to/file.py -v` (no -m flag) silently runs live tests. The Phase 1 Plan 01-02 + Phase 2 Plan 02-03 + Plan 03-03 plans all assumed live-deselect-by-default semantics that pytest does not actually enforce without explicit addopts. Out of scope per RULE 4 — pyproject.toml is not in Plan 03-03's files_modified list and the change has cross-cutting impact on every other live test in the repo. Tracked as v1.1 hardening below.
+- Plan 03-03 token-counts-zero observation is provenance noise, not a gate failure: the verbatim stdout shows judge_input_tokens=0 / judge_output_tokens=0 even though real spend occurred (~$0.014 estimate consistent with plan a-priori ~$0.005-0.02). Same v1.1 follow-up tracked since Plan 02-04 (judge cost ledger underreports on LiteLLM completions) — augment score.py's token_usage_parser to parse usage from LiteLLM ModelResponse bodies even when the parser misses some calls. The cost guard is bounded by question×metric×call count regardless.
 
 ### Pending Todos
 
@@ -106,7 +110,8 @@ None yet.
 - Phase 7 pre-rerun ingest must process 72 remaining papers (`tier-4-multimodal/output/` minus 3 smoke papers minus 4 Plan-02-02 fresh-MineRU papers); projected wall ~15–25h / cost ~$15–35
 - Phase 7 ingest run will hit OpenRouter vision-LLM `400 Invalid URL format` errors on larger figures (base64 image data exceeding URL length limit); recommend pre-warming `kv_store_llm_response_cache.json` or routing vision direct to OpenAI/Gemini (off-OpenRouter) to mitigate
 - ~~Plan 02-03 smoke gate FAIL pending gap-closure~~ **CLEARED 2026-05-05 by Plan 02-04** — JUDGE_MAX_TOKENS=8192 wired into score._build_judge, Tier 4 re-scored, smoke gate PASS for both Tier 4 (gap target) and Tier 5 (regression check). See 02-04-SUMMARY.md for verbatim verdict JSON.
-- **Judge cost ledger underreports on LiteLLM completions**: Plan 02-04's new `ragas-judge-tier-4-20260505T151051Z.json` records $0 despite real spend (smaller now since no retries, but still non-zero per OpenRouter dashboard). Tracked as v1.1 follow-up — augment score.py to parse usage from LiteLLM ModelResponse bodies even when token_usage_parser misses calls. Cross-referenced in both 02-03-SUMMARY.md and 02-04-SUMMARY.md.
+- **Judge cost ledger underreports on LiteLLM completions**: Plan 02-04's new `ragas-judge-tier-4-20260505T151051Z.json` records $0 despite real spend (smaller now since no retries, but still non-zero per OpenRouter dashboard); manifested again in Plan 03-03's live smoke as `judge_input_tokens=0 / judge_output_tokens=0`. Tracked as v1.1 follow-up — augment score.py to parse usage from LiteLLM ModelResponse bodies even when token_usage_parser misses calls. Cross-referenced in 02-03-SUMMARY.md, 02-04-SUMMARY.md, and 03-03-SUMMARY.md.
+- **Live tests not deselected by default in pyproject.toml** (NEW v1.1 hardening item, surfaced by Plan 03-03 process deviation): pyproject.toml declares the `live` marker but does NOT include `addopts = "-m 'not live'"` under `[tool.pytest.ini_options]`. Consequence: a bare `pytest evaluation/tests/test_eval_smoke_live.py -v` (no -m flag) silently runs live tests, including any newly-added ones. Plan 03-03 manifested this gap when a previous agent accidentally executed the live nan_reasons test during a deselection-check verification step. Recommended v1.1 fix: add `addopts = "-m 'not live'"` and update the live-test invocation pattern in plans + CLAUDE.md to use `-m live -k <test>` explicitly. Out of scope per Plan 03-03's RULE 4 (pyproject.toml not in files_modified; cross-cutting impact on every other live test in repo).
 
 ## Deferred Items
 
@@ -120,9 +125,11 @@ Items acknowledged and carried forward as v1.1+:
 | Methodology | METH-02: full cross-judge re-scoring (all 30 × 5) | Tracked in REQUIREMENTS.md v1.1 | 2026-05-04 (init) |
 | Methodology | METH-03: per-tier per-class min/max/stdev | Tracked in REQUIREMENTS.md v1.1 | 2026-05-04 (init) |
 | Blog Iteration | BLOG-01: rebuttal run pipeline | Tracked in REQUIREMENTS.md v1.1 | 2026-05-04 (init) |
+| Tooling | Pytest live-marker deselect-by-default: add `addopts = "-m 'not live'"` to `[tool.pytest.ini_options]` so a bare `pytest path/to/file.py -v` cannot accidentally consume API budget | New v1.1 item | 2026-05-05 (Plan 03-03) |
+| Tooling | LiteLLM judge token-usage parser: augment score.py's `token_usage_parser=get_token_usage_for_openai` to parse usage from LiteLLM ModelResponse bodies even when the parser misses some calls | Tracked since Plan 02-04, re-confirmed by Plan 03-03 | 2026-05-05 (re-confirmed) |
 
 ## Session Continuity
 
-Last session: 2026-05-05T18:10:35.136Z
-Stopped at: Phase 3 Plan 03-01 complete: NaNReasonTracer(BaseCallbackHandler) + _classify_post_evaluate_nan pure helper landed in evaluation/harness/score.py via TDD red→green (commits e97e864 + bc80825). 15 new unit tests, +109 LOC score.py, +253 LOC test_eval_score.py. All 28 tests pass; all 7 verification gates PASS. Zero deviations. Phase 3 progress: 1/3 plans complete. Plan 03-02 will wire NaNReasonTracer into score_query_log's evaluate(callbacks=[tracer], ...) and post-process each row through _classify_post_evaluate_nan to populate ScoreRecord.nan_reason; Plan 03-03 is the live smoke backstop with checkpoint:human-verify.
+Last session: 2026-05-05T19:15:00.000Z
+Stopped at: Phase 3 Plan 03-03 complete — live smoke backstop test_eval_smoke_nan_reasons added to evaluation/tests/test_eval_smoke_live.py (commit 512ad54) and verified end-to-end against real OpenRouter Gemini 2.5 Flash judge — verdict 2026-05-05 PASS (n_total=5, n_unknown_nan=0, n_scored_post_short_circuit=5; ~$0.014 cost vs $0.05 cost guard; 78.78s wall time). HARN-05 closed at unit (Plan 03-01) + integration (Plan 03-02) + live (Plan 03-03) levels. Phase 3 complete (3/3 plans). Single process deviation routed through user-approved checkpoint:decision: previous agent accidentally executed the live test once during a deselection-check verification step (~$0.005-0.02 extra spend; root cause is pyproject.toml not declaring `addopts = "-m 'not live'"` — v1.1 hardening). Phase 4 (Freeze Tool) is next.
 Resume file: None
