@@ -297,6 +297,151 @@ def test_fmt_float_handles_nan():
     assert _fmt_float(0.001234, 6) == "0.001234"
 
 
+def _seed_results_with_embedder(
+    tmp_path: Path,
+    tier: int,
+    embedder: str | None,
+    embedder_source: str | None,
+):
+    """Seed a minimal queries+costs+metrics fixture for one tier with the
+    new (embedder, embedder_source) provenance fields populated.
+
+    Plan 06-01 Task 5 helper. Mirrors _seed_results above but takes the new
+    fields explicitly. When embedder/embedder_source are None, the queries
+    JSON OMITS the keys entirely (legacy-shape) so the em-dash fallback
+    branch is exercised.
+    """
+    queries_dir = tmp_path / "queries"
+    costs_dir = tmp_path / "costs"
+    metrics_dir = tmp_path / "metrics"
+    queries_dir.mkdir(exist_ok=True)
+    costs_dir.mkdir(exist_ok=True)
+    metrics_dir.mkdir(exist_ok=True)
+
+    timestamp = "2026-05-06T12:00:00Z"
+    fname_ts = timestamp.replace(":", "_")
+
+    queries_payload: dict = {
+        "tier": f"tier-{tier}",
+        "timestamp": timestamp,
+        "git_sha": "abc1234",
+        "model": "google/gemini-2.5-flash",
+        "records": [
+            {"question_id": "q1", "question": "?", "answer": "a",
+             "retrieved_contexts": ["c"], "latency_s": 1.0,
+             "cost_usd_at_capture": 0.001, "error": None},
+        ],
+    }
+    if embedder is not None:
+        queries_payload["embedder"] = embedder
+    if embedder_source is not None:
+        queries_payload["embedder_source"] = embedder_source
+
+    queries_dir.joinpath(f"tier-{tier}-{fname_ts}.json").write_text(
+        json.dumps(queries_payload)
+    )
+    costs_dir.joinpath(f"tier-{tier}-eval-{fname_ts}.json").write_text(
+        json.dumps({
+            "tier": f"tier-{tier}-eval",
+            "timestamp": timestamp,
+            "queries": [],
+            "totals": {"usd": 0.001, "llm_input_tokens": 100,
+                       "llm_output_tokens": 50, "embedding_tokens": 0},
+        })
+    )
+    metrics_dir.joinpath(f"tier-{tier}-{fname_ts}.json").write_text(
+        json.dumps([
+            {"question_id": "q1", "faithfulness": 0.9, "answer_relevancy": 0.85,
+             "context_precision": 0.8, "nan_reason": None},
+        ])
+    )
+
+
+def _run_compare(tmp_path: Path, tiers: str = "1") -> str:
+    """Drive compare._run against tmp_path; return the rendered comparison.md."""
+    from types import SimpleNamespace
+    from evaluation.harness.compare import _run
+
+    out = tmp_path / "comparison.md"
+    args = SimpleNamespace(
+        results_dir=str(tmp_path),
+        tiers=tiers,
+        out=str(out),
+    )
+    rc = _run(args)
+    assert rc == 0, f"compare._run exited with rc={rc}"
+    return out.read_text(encoding="utf-8")
+
+
+def test_compare_emits_embedder_in_provenance_footer(tmp_path):
+    """Plan 06-01 Task 5 / Success Criterion 3: comparison.md provenance
+    footer contains a per-tier embedder line of the form
+    `  - embedder: \\`<emb>\\` (source: \\`<src>\\`)`.
+    """
+    _seed_results_with_embedder(
+        tmp_path, tier=1,
+        embedder="openai/text-embedding-3-small",
+        embedder_source="openrouter",
+    )
+    md = _run_compare(tmp_path, tiers="1")
+    assert "  - embedder: `openai/text-embedding-3-small` (source: `openrouter`)" in md, (
+        f"missing embedder line in provenance footer; markdown:\n{md}"
+    )
+
+
+def test_compare_emits_em_dash_for_legacy_embedder(tmp_path):
+    """Plan 06-01 Task 5 / D-BACKCOMPAT / Pitfall 6: legacy QueryLog JSONs
+    (no embedder fields) render the embedder line with em-dash placeholders;
+    no traceback / KeyError.
+    """
+    _seed_results_with_embedder(
+        tmp_path, tier=1,
+        embedder=None,
+        embedder_source=None,
+    )
+    md = _run_compare(tmp_path, tiers="1")
+    assert "  - embedder: `—` (source: `—`)" in md, (
+        f"em-dash legacy fallback missing; markdown:\n{md}"
+    )
+
+
+def test_compare_emits_embedder_by_tier_table(tmp_path):
+    """Plan 06-01 Task 5 / D-Q1 / D-ROADMAP-OVERRIDE: comparison.md
+    contains a dedicated 'Embedder by tier' table block above the NaN
+    breakdown. Tier 5's row matches Tier 1's (NOT a hosted vector store);
+    Tier 2's 'Managed' column reads 'yes' (Google File Search managed).
+    """
+    truth = {
+        1: ("openai/text-embedding-3-small", "openrouter"),
+        2: ("gemini-embedding-001", "google-managed"),
+        3: ("openai/text-embedding-3-small", "openrouter"),
+        4: ("openai/text-embedding-3-small", "openrouter"),
+        5: ("openai/text-embedding-3-small", "openrouter"),
+    }
+    for tier, (emb, src) in truth.items():
+        _seed_results_with_embedder(tmp_path, tier=tier, embedder=emb, embedder_source=src)
+
+    md = _run_compare(tmp_path, tiers="1,2,3,4,5")
+
+    # 1. Heading present.
+    assert "**Embedder by tier:**" in md, f"missing 'Embedder by tier' heading"
+
+    # 2. Tier 2 row reads 'yes' for Managed (only google-managed source).
+    assert "| tier-2 | gemini-embedding-001 | google-managed | yes |" in md, (
+        f"tier-2 managed=yes row missing; markdown excerpt:\n{md[-2000:]}"
+    )
+
+    # 3. Tier 5 row reads identical to Tier 1's (D-ROADMAP-OVERRIDE).
+    tier5_row = "| tier-5 | openai/text-embedding-3-small | openrouter | no |"
+    assert tier5_row in md, (
+        f"tier-5 row mismatch (D-ROADMAP-OVERRIDE); expected {tier5_row!r}; "
+        f"markdown excerpt:\n{md[-2000:]}"
+    )
+
+    # 4. Tier 1 row (sanity).
+    assert "| tier-1 | openai/text-embedding-3-small | openrouter | no |" in md
+
+
 def test_cli_help_exits_zero():
     """argparse --help → SystemExit(0); flag list introspectable without invoking main()."""
     from evaluation.harness import compare as compare_mod
