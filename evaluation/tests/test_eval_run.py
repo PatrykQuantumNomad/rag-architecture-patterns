@@ -117,7 +117,7 @@ def test_run_tier1_loop_persists_query_log(tmp_path, monkeypatch):
 
     captured: dict = {}
 
-    async def fake_capture_tier(tier, qa, args, console):
+    async def fake_capture_tier(tier, qa, args, console, **kw):
         log = QueryLog(
             tier=f"tier-{tier}",
             timestamp="2026-04-27T12:00:00Z",
@@ -238,7 +238,7 @@ def test_run_smoke_ids_filters_correctly(tmp_path, monkeypatch):
 
     captured: dict = {}
 
-    async def fake_capture_tier(tier, qa, args, console):
+    async def fake_capture_tier(tier, qa, args, console, **kw):
         captured["qa"] = qa
         captured["tier"] = tier
         return QueryLog(

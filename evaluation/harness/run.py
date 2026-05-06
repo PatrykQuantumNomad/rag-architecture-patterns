@@ -148,15 +148,20 @@ async def _capture_tier(
     qa: list[dict],
     args,
     console: Console,
+    *,
+    git_sha_override: str | None = None,
+    ts_override: str | None = None,
 ) -> Optional[QueryLog]:
     """Drive ONE tier over `qa`; return its QueryLog or None on prereq-skip.
 
     ONE CostTracker per tier per invocation (Pitfall 11 collision avoidance).
     Tier 3 + Tier 5 build their reusable instance (rag/agent) BEFORE the loop
     so storage init / agent construction is amortized across all questions.
+    Plan 05-01: optional *_override kwargs let pipeline.py thread a single
+    sweep-level SHA + ISO timestamp (HARN-01); defaults preserve old behavior.
     """
-    timestamp = _ts()
-    git_sha = _git_sha()
+    timestamp = ts_override or _ts()
+    git_sha = git_sha_override or _git_sha()
     tracker = CostTracker(f"tier-{tier}-eval")
     records: list[EvalRecord] = []
 
@@ -312,8 +317,10 @@ async def amain(args, console: Console) -> int:
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     Path(args.output_dir, "queries").mkdir(parents=True, exist_ok=True)
 
+    sha_o = getattr(args, "git_sha_override", None)
+    ts_o = getattr(args, "ts_override", None)
     for tier in tiers:
-        log = await _capture_tier(tier, qa, args, console)
+        log = await _capture_tier(tier, qa, args, console, git_sha_override=sha_o, ts_override=ts_o)
         if log is None:
             console.print(f"[yellow]Tier {tier} produced no log — moving on.[/yellow]")
 
