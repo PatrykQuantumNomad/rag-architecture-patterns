@@ -146,3 +146,29 @@ def test_query_log_legacy_json_loads_with_none_embedder():
     # Pre-existing fields still load (regression guard).
     assert log.tier == "tier-1"
     assert log.git_sha == "ce5c2ad"
+
+
+def test_per_tier_embedder_constants_importable():
+    """Each tier module exports the (EMBED_MODEL, EMBEDDER_SOURCE) tuple
+    used by run.py / eval_capture.py to populate QueryLog fields.
+
+    Plan 06-01 Task 2 / D-ROADMAP-OVERRIDE / D-Q2.
+
+    Tier 5 reuses Tier 1's embedder (verified in 06-RESEARCH.md against
+    tier-5-agentic/tools.py:47-50,90-101) — overriding ROADMAP's incorrect
+    "OpenAI hosted vector-store" claim. Tier 5 imports EMBED_MODEL
+    transitively via `from tier_1_naive.embed_openai import EMBED_MODEL`,
+    so the import below is resolvable from tier_5_agentic.tools.
+    """
+    from tier_1_naive.embed_openai import EMBED_MODEL as T1_EMB, EMBEDDER_SOURCE as T1_SRC
+    from tier_2_managed.main import EMBED_MODEL as T2_EMB, EMBEDDER_SOURCE as T2_SRC
+    from tier_3_graph.rag import DEFAULT_EMBED_MODEL as T3_EMB, EMBEDDER_SOURCE as T3_SRC
+    from tier_4_multimodal.rag import DEFAULT_EMBED_MODEL as T4_EMB, EMBEDDER_SOURCE as T4_SRC
+    from tier_5_agentic.tools import EMBED_MODEL as T5_EMB, EMBEDDER_SOURCE as T5_SRC
+
+    assert T1_EMB == "openai/text-embedding-3-small" and T1_SRC == "openrouter"
+    assert T2_EMB == "gemini-embedding-001" and T2_SRC == "google-managed"
+    assert T3_EMB == "openai/text-embedding-3-small" and T3_SRC == "openrouter"
+    assert T4_EMB == "openai/text-embedding-3-small" and T4_SRC == "openrouter"
+    # D-ROADMAP-OVERRIDE: Tier 5 IS Tier 1's embedder, NOT a hosted vector store.
+    assert T5_EMB == "openai/text-embedding-3-small" and T5_SRC == "openrouter"
