@@ -49,6 +49,13 @@ from tier_1_naive.embed_openai import (  # noqa: E402
     EMBED_MODEL,
 )
 
+# Phase 6 / CAP-03 — Tier 5 reuses Tier 1's embedder model (EMBED_MODEL above)
+# but declares its own source-tag constant. NOT a duplicate of EMBED_MODEL —
+# Pitfall 4 of 06-RESEARCH.md (re-import the model string; declare the source
+# tag locally). D-ROADMAP-OVERRIDE: Tier 5 source is "openrouter" (same as
+# Tier 1), NOT "openai-hosted-managed".
+EMBEDDER_SOURCE: str = "openrouter"
+
 # --- Module-level singletons (lazy-init) ---------------------------------
 
 _collection = None

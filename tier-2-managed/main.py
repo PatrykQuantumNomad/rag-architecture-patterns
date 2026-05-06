@@ -91,6 +91,12 @@ DEFAULT_QUERY: str = (
 # Mirrors the gemini-embedding-001 rate in shared/pricing.py — Pitfall 7.
 INDEXING_PRICE_PER_M: float = 0.15
 
+# Phase 6 / CAP-03 — Tier 2's embedder identity (Google File Search managed
+# indexing). The hardcoded string at tracker.record_embedding(...) below remains
+# unchanged to minimize the diff per Plan 06-01 Task 2 D-Q2.
+EMBED_MODEL: str = "gemini-embedding-001"
+EMBEDDER_SOURCE: str = "google-managed"
+
 
 # ---------------------------------------------------------------------------
 # Helpers

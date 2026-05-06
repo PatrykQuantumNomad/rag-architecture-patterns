@@ -29,6 +29,7 @@ OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 # OpenRouter model slug (provider/model). Underlying provider is OpenAI; the
 # 1536-dim vector shape is what the ChromaDB index was built against.
 EMBED_MODEL: str = "openai/text-embedding-3-small"
+EMBEDDER_SOURCE: str = "openrouter"  # Phase 6 / CAP-03 — provenance gateway tag.
 EMBED_DIMS: int = 1536
 
 

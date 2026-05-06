@@ -51,6 +51,7 @@ OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 DEFAULT_LLM_MODEL = "google/gemini-2.5-flash"
 DEFAULT_VISION_MODEL = "google/gemini-2.5-flash"  # multimodal — same slug
 DEFAULT_EMBED_MODEL = "openai/text-embedding-3-small"
+EMBEDDER_SOURCE = "openrouter"  # Phase 6 / CAP-03 — provenance gateway tag.
 EMBED_DIMS = 1536  # Pitfall 4 — pinned; index corruption on change
 EMBED_MAX_TOKENS = 8192
 
@@ -234,6 +235,7 @@ __all__ = [
     "DEFAULT_LLM_MODEL",
     "DEFAULT_VISION_MODEL",
     "DEFAULT_EMBED_MODEL",
+    "EMBEDDER_SOURCE",
     "EMBED_DIMS",
     "EMBED_MAX_TOKENS",
 ]

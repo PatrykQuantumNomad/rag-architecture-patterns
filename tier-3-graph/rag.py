@@ -54,6 +54,7 @@ WORKING_DIR = "lightrag_storage/tier-3-graph"
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 DEFAULT_LLM_MODEL = "google/gemini-2.5-flash"
 DEFAULT_EMBED_MODEL = "openai/text-embedding-3-small"
+EMBEDDER_SOURCE = "openrouter"  # Phase 6 / CAP-03 — provenance gateway tag.
 EMBED_DIMS = 1536  # Pitfall 4 — locked at first ingest; --reset to change.
 EMBED_MAX_TOKENS = 8192  # Conservative ceiling — gemini-2.5-flash supports far more.
 
@@ -168,6 +169,7 @@ __all__ = [
     "OPENROUTER_BASE",
     "DEFAULT_LLM_MODEL",
     "DEFAULT_EMBED_MODEL",
+    "EMBEDDER_SOURCE",
     "EMBED_DIMS",
     "EMBED_MAX_TOKENS",
 ]
