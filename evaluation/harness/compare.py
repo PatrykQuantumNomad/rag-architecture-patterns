@@ -130,6 +130,8 @@ def aggregate_tier(tier: int, results_dir: Path) -> Optional[dict]:
         "timestamp": queries.get("timestamp"),
         "git_sha": queries.get("git_sha"),
         "model": queries.get("model"),
+        "embedder": queries.get("embedder"),  # Phase 6 / CAP-03 — None for legacy
+        "embedder_source": queries.get("embedder_source"),  # Phase 6 / CAP-03
         "queries_path": str(queries_path),
         "cost_path": str(cost_path) if cost_path else None,
         "metrics_path": str(metrics_path) if metrics_path else None,
@@ -262,8 +264,25 @@ def emit_markdown(
                 f"- `{prov['tier_label']}`: captured {prov['timestamp']} "
                 f"(model `{prov['model']}`, git `{prov['git_sha']}`)"
             )
+            # Phase 6 / CAP-03 — em-dash for legacy captures (D-BACKCOMPAT).
+            emb = prov.get("embedder") or "—"
+            src = prov.get("embedder_source") or "—"
+            lines.append(f"  - embedder: `{emb}` (source: `{src}`)")
     else:
         lines.append("- (no tier query logs found)")
+
+    # Phase 6 / D-Q1 — Embedder-by-tier table (lifted out so Phase 9's frozen
+    # doc is a pure copy-paste). "Managed" derived from embedder_source ==
+    # "google-managed" (only Tier 2 qualifies; D-ROADMAP-OVERRIDE).
+    if capture_provenance:
+        lines.extend(["", "**Embedder by tier:**", "",
+            "| Tier | Embedder Model | Source | Managed |",
+            "|------|----------------|--------|---------|"])
+        for prov in capture_provenance:
+            emb = prov.get("embedder") or "—"
+            src = prov.get("embedder_source") or "—"
+            managed = "yes" if src == "google-managed" else ("no" if src != "—" else "—")
+            lines.append(f"| {prov['tier_label']} | {emb} | {src} | {managed} |")
 
     # NaN breakdown
     lines.extend(["", "**NaN breakdown per tier:**", ""])
@@ -362,6 +381,8 @@ def _run(args) -> int:
             "timestamp": r.get("timestamp", "—"),
             "model": r.get("model", "—"),
             "git_sha": r.get("git_sha", "—"),
+            "embedder": r.get("embedder"),  # Phase 6 / CAP-03
+            "embedder_source": r.get("embedder_source"),  # Phase 6 / CAP-03
         })
 
     tier_4_present = any(
