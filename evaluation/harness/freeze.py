@@ -56,6 +56,8 @@ def freeze(version: str, force: bool = False, results_dir: Path | None = None, s
         if row is None:
             per_tier[f"tier-{t}"] = {"status": "missing"}; continue
         entry: dict = {"status": "present", "generation_model": row.get("model"),
+            "embedder": row.get("embedder"),  # Phase 6 / CAP-03 — None for legacy
+            "embedder_source": row.get("embedder_source"),  # Phase 6 / CAP-03
             "capture_timestamp": row.get("timestamp"), "capture_git_sha": row.get("git_sha"),
             "queries_path": _rel(row["queries_path"], results_dir),
             "queries_mtime": _iso_z(Path(row["queries_path"]).stat().st_mtime)}
