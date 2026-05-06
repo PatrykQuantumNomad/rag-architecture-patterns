@@ -606,3 +606,100 @@ def test_single_tier_rerun_preserves_others(tmp_path, monkeypatch):
         f"propagated SHA missing on disk: expected {sweep_sha}, got {payload.get('git_sha')}"
     )
     assert payload["timestamp"] == sweep_ts
+
+
+# --- Live smoke backstop (Plan 05-02) ---------------------------------------
+
+
+@pytest.mark.live
+def test_pipeline_live_tier5_smoke(
+    tmp_path, monkeypatch, live_eval_keys_ok, tier1_index_present
+):
+    """HARN-01 live: end-to-end pipeline with real OpenRouter API on Tier 5 x 5q.
+
+    Cost ceiling: ~$0.05 (D-LIVE-COST-CEILING). Wall time: ~30-90s.
+    Skips cleanly if keys/index missing. Tier 5 chosen because it's the agentic
+    tier whose contexts come from real tool outputs - most representative for
+    single-SHA-propagation verification at the lowest cost.
+
+    Cost JSON schema note: run.py + score.py write ``{"totals": {"usd": <float>, ...},
+    "queries": [...]}`` (NOT a top-level ``total_usd``). Per Plan 05-02 D-LIVE-COST-CEILING
+    the ceiling assertion is preserved verbatim; only the .get() keys are adapted to the
+    actual on-disk schema.
+
+    Cost-dir isolation note (Rule 1 fix during execution): ``run.py:273`` and
+    ``score.py:518`` call ``tracker.persist()`` with NO ``dest_dir`` arg, which
+    means ``CostTracker`` always writes to ``shared.cost_tracker.DEFAULT_COSTS_DIR``
+    (hardcoded ``evaluation/results/costs/``) regardless of pipeline.py's
+    ``--results-dir``. This is a pre-existing harness mis-feature, NOT introduced
+    by this plan - both ``run.py`` and ``score.py`` are byte-identical post-Plan
+    05-01. To preserve test isolation (must-have truth: re-runnable without state
+    leakage) we monkeypatch ``DEFAULT_COSTS_DIR`` to a tmp_path subdir so the
+    live test's cost JSONs land under tmp_path and the ceiling assertion can
+    glob them deterministically.
+    """
+    # Pre-create the results_dir layout pipeline.py expects (run.amain only
+    # creates queries/; costs/ + metrics/ are created downstream).
+    results = tmp_path / "results"
+    (results / "queries").mkdir(parents=True)
+    (results / "metrics").mkdir(parents=True)
+    (results / "costs").mkdir(parents=True)
+
+    # Redirect tracker.persist() to tmp_path's costs/ dir (see docstring).
+    import shared.cost_tracker as cost_tracker_mod
+    monkeypatch.setattr(cost_tracker_mod, "DEFAULT_COSTS_DIR", results / "costs")
+
+    argv = [
+        "--tiers", "5",
+        "--limit", "5",
+        "--yes",
+        "--results-dir", str(results),
+    ]
+    rc = pipeline.main(argv)
+    assert rc == 0, f"pipeline.main returned {rc}; expected 0"
+
+    # HARN-01: verify single-SHA propagation across all on-disk artifacts.
+    queries = list((results / "queries").glob("tier-5-*.json"))
+    metrics = list((results / "metrics").glob("tier-5-*.json"))
+    costs_eval = list((results / "costs").glob("tier-5-eval-*.json"))
+    costs_judge = list((results / "costs").glob("ragas-judge-tier-5-*.json"))
+
+    assert len(queries) == 1, f"expected 1 tier-5 queries log, got {queries}"
+    assert len(metrics) == 1, f"expected 1 tier-5 metrics file, got {metrics}"
+    assert len(costs_eval) == 1, f"expected 1 tier-5 eval cost file, got {costs_eval}"
+    assert len(costs_judge) == 1, f"expected 1 ragas-judge cost file, got {costs_judge}"
+
+    # Single-SHA propagation: queries log carries the sweep SHA.
+    ql = json.loads(queries[0].read_text())
+    assert ql.get("git_sha"), f"queries log missing git_sha: {list(ql.keys())}"
+    assert ql.get("git_sha") != "unknown", \
+        "queries log git_sha == 'unknown' - _git_sha() failed; was repo a git tree?"
+    assert ql.get("tier") == "tier-5"
+    assert len(ql.get("records", [])) == 5
+
+    # HARN-01 single-SHA propagation continues into cost + metrics filenames:
+    # all three on-disk artifacts must share the same sweep timestamp slug
+    # (queries log carries the SHA in-payload; costs + metrics carry the ts in filename).
+    sweep_ts_payload = ql.get("timestamp")
+    assert sweep_ts_payload, "queries log missing timestamp"
+
+    # comparison.md regenerated, contains tier-5 row.
+    comparison = results / "comparison.md"
+    assert comparison.exists(), "comparison.md not written"
+    md = comparison.read_text()
+    assert "Tier 5" in md or "tier-5" in md.lower(), \
+        f"comparison.md missing tier-5 row: {md[:500]}"
+
+    # WARNING W4: HARD COST CEILING enforced as pytest assertion.
+    # D-LIVE-COST-CEILING locks the ceiling at $0.05/run; expected ~$0.02.
+    # Schema (verified against existing files in evaluation/results/costs/):
+    # ``{"queries": [...], "totals": {"usd": <float>, ...}}`` - NOT a top-level
+    # "total_usd" field as the planner's verbatim sketch suggested.
+    total_usd = sum(
+        json.loads(p.read_text()).get("totals", {}).get("usd", 0.0)
+        for p in (*costs_eval, *costs_judge)
+    )
+    assert total_usd <= 0.05, \
+        f"live cost {total_usd:.4f} exceeded $0.05 ceiling (D-LIVE-COST-CEILING)"
+    # Print for SUMMARY provenance (visible with `pytest -s` / `-v`).
+    print(f"\n[live smoke] total_usd={total_usd:.6f} git_sha={ql.get('git_sha')}")
