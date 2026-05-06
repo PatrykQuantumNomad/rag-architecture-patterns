@@ -43,7 +43,12 @@ from rich.console import Console
 from shared.config import get_settings
 from shared.cost_tracker import CostTracker
 
-from tier_4_multimodal.rag import build_rag, DEFAULT_LLM_MODEL, DEFAULT_EMBED_MODEL
+from tier_4_multimodal.rag import (
+    build_rag,
+    DEFAULT_LLM_MODEL,
+    DEFAULT_EMBED_MODEL,
+    EMBEDDER_SOURCE,
+)
 from tier_4_multimodal.cost_adapter import CostAdapter
 from tier_4_multimodal.query import run_query
 
@@ -197,6 +202,8 @@ async def _capture(args, console: Console) -> int:
         timestamp=timestamp,
         git_sha=_git_sha(),
         model=DEFAULT_LLM_MODEL,
+        embedder=DEFAULT_EMBED_MODEL,
+        embedder_source=EMBEDDER_SOURCE,
         records=records,
     )
 
