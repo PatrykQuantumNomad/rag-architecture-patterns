@@ -44,6 +44,8 @@ class QueryLog(BaseModel):
     timestamp: str  # ISO 8601 UTC, "Z" suffix — matches CostTracker D-13
     git_sha: str
     model: str
+    embedder: Optional[str] = None  # Phase 6 / CAP-03 — embedding model identifier
+    embedder_source: Optional[str] = None  # Phase 6 / CAP-03 — provenance gateway
     records: list[EvalRecord]
 
 
