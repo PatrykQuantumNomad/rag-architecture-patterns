@@ -170,6 +170,10 @@ async def _capture_tier(
             DEFAULT_MODEL as T1_MODEL,
             run_tier1,
         )
+        from tier_1_naive.embed_openai import (
+            EMBED_MODEL as T1_EMBEDDER,
+            EMBEDDER_SOURCE as T1_EMBEDDER_SOURCE,
+        )
         for i, q in enumerate(qa):
             console.print(
                 f"[dim][T1 {i+1}/{len(qa)}] {q['id']}: {q['question'][:80]}...[/dim]"
@@ -177,9 +181,15 @@ async def _capture_tier(
             rec = await run_tier1(q["id"], q["question"], k=args.tier1_k, tracker=tracker)
             records.append(rec)
         model = T1_MODEL
+        embedder = T1_EMBEDDER
+        embedder_source = T1_EMBEDDER_SOURCE
 
     elif tier == 2:
         from evaluation.harness.adapters.tier_2 import run_tier2
+        from tier_2_managed.main import (
+            EMBED_MODEL as T2_EMBEDDER,
+            EMBEDDER_SOURCE as T2_EMBEDDER_SOURCE,
+        )
         from tier_2_managed.query import DEFAULT_MODEL as T2_MODEL
         store_id_path = _REPO_ROOT / "tier-2-managed" / ".store_id"
         store_name = store_id_path.read_text().strip()
@@ -192,6 +202,8 @@ async def _capture_tier(
             )
             records.append(rec)
         model = T2_MODEL
+        embedder = T2_EMBEDDER
+        embedder_source = T2_EMBEDDER_SOURCE
 
     elif tier == 3:
         from evaluation.harness.adapters.tier_3 import run_tier3
@@ -199,6 +211,7 @@ async def _capture_tier(
         from tier_3_graph.rag import (
             DEFAULT_EMBED_MODEL,
             DEFAULT_LLM_MODEL as T3_MODEL,
+            EMBEDDER_SOURCE as T3_EMBEDDER_SOURCE,
             build_rag,
         )
         # ONE LightRAG instance reused across the loop (storage init is ~30s)
@@ -214,9 +227,15 @@ async def _capture_tier(
             )
             records.append(rec)
         model = T3_MODEL
+        embedder = DEFAULT_EMBED_MODEL
+        embedder_source = T3_EMBEDDER_SOURCE
 
     elif tier == 4:
         from evaluation.harness.adapters.tier_4 import CachedTier4Miss, run_tier4
+        from tier_4_multimodal.rag import (
+            DEFAULT_EMBED_MODEL as T4_EMBEDDER,
+            EMBEDDER_SOURCE as T4_EMBEDDER_SOURCE,
+        )
         if not args.tier_4_from_cache:
             console.print(
                 "[yellow]Tier 4 SKIPPED — no --tier-4-from-cache supplied.[/yellow]"
@@ -239,10 +258,16 @@ async def _capture_tier(
             return None
         # Nominal — Tier 4 cached records carry their own model in the source log.
         model = "google/gemini-2.5-flash"
+        embedder = T4_EMBEDDER
+        embedder_source = T4_EMBEDDER_SOURCE
 
     elif tier == 5:
         from evaluation.harness.adapters.tier_5 import run_tier5
         from tier_5_agentic.agent import DEFAULT_MODEL as T5_MODEL, build_agent
+        # Tier 5 reuses Tier 1's embedder (Pitfall 4 of 06-RESEARCH.md);
+        # source-tag constant is declared locally on tier_5_agentic.tools.
+        from tier_1_naive.embed_openai import EMBED_MODEL as T5_EMBEDDER
+        from tier_5_agentic.tools import EMBEDDER_SOURCE as T5_EMBEDDER_SOURCE
         agent = build_agent(model=T5_MODEL)
         for i, q in enumerate(qa):
             console.print(
@@ -253,6 +278,8 @@ async def _capture_tier(
             )
             records.append(rec)
         model = T5_MODEL
+        embedder = T5_EMBEDDER
+        embedder_source = T5_EMBEDDER_SOURCE
 
     else:
         console.print(f"[red]Unsupported tier: {tier}[/red]")
@@ -263,6 +290,8 @@ async def _capture_tier(
         timestamp=timestamp,
         git_sha=git_sha,
         model=model,
+        embedder=embedder,
+        embedder_source=embedder_source,
         records=records,
     )
 
