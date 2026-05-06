@@ -265,6 +265,159 @@ def test_run_smoke_ids_filters_correctly(tmp_path, monkeypatch):
     assert [q["id"] for q in captured["qa"]] == ["c", "a"]
 
 
+@pytest.mark.parametrize(
+    "tier,exp_emb,exp_src",
+    [
+        (1, "openai/text-embedding-3-small", "openrouter"),
+        (2, "gemini-embedding-001", "google-managed"),
+        (3, "openai/text-embedding-3-small", "openrouter"),
+        (4, "openai/text-embedding-3-small", "openrouter"),
+        # D-ROADMAP-OVERRIDE: Tier 5 is Tier 1's embedder, NOT a hosted vector store.
+        (5, "openai/text-embedding-3-small", "openrouter"),
+    ],
+)
+def test_run_amain_writes_embedder_per_tier_offline(
+    tmp_path, monkeypatch, tier, exp_emb, exp_src
+):
+    """Plan 06-01 Task 3: each tier branch in _capture_tier reads its tier
+    module's (EMBED_MODEL, EMBEDDER_SOURCE) tuple and threads both into the
+    QueryLog written to evaluation/results/queries/tier-{N}-*.json.
+
+    Per-tier strategy (offline):
+      * Patch _check_prereqs + _load_golden_qa so amain doesn't bail.
+      * Patch the adapter's run_tierN to return a fixed EvalRecord (no network).
+      * Tier 2: stub .store_id file + read.
+      * Tier 3: patch build_rag to a stub with awaitable initialize_storages.
+      * Tier 4: write a fixture cached JSON; pass --tier-4-from-cache.
+      * Tier 5: patch build_agent to a no-op stub.
+    """
+    from evaluation.harness import run as run_mod
+    from evaluation.harness.records import EvalRecord
+
+    # 1. Tier-agnostic stubs for amain's checks.
+    monkeypatch.setattr(run_mod, "_REPO_ROOT", tmp_path)
+    monkeypatch.setattr(
+        run_mod,
+        "_load_golden_qa",
+        lambda: [
+            {
+                "id": "q1",
+                "question": "What is RAG?",
+                "expected_answer": "memory.",
+                "source_papers": [],
+                "modality_tag": "text",
+                "hop_count_tag": "single-hop",
+                "figure_ids": [],
+                "video_ids": [],
+            }
+        ],
+    )
+    monkeypatch.setattr(run_mod, "_check_prereqs", lambda tiers, console: 0)
+
+    # 2. Patch tier-specific adapter / builder seams BEFORE _capture_tier
+    # imports them lazily.
+    fake_record = EvalRecord(
+        question_id="q1",
+        question="What is RAG?",
+        answer="answer",
+        retrieved_contexts=["c1"],
+        latency_s=0.1,
+        cost_usd_at_capture=0.0001,
+    )
+
+    async def _fake_run(*a, **kw):
+        return fake_record
+
+    cli_args = [
+        "--tiers", str(tier),
+        "--limit", "1",
+        "--yes",
+        "--output-dir", str(tmp_path / "out"),
+    ]
+
+    if tier == 1:
+        from evaluation.harness.adapters import tier_1 as t1_adapter
+        monkeypatch.setattr(t1_adapter, "run_tier1", _fake_run)
+
+    elif tier == 2:
+        from evaluation.harness.adapters import tier_2 as t2_adapter
+        monkeypatch.setattr(t2_adapter, "run_tier2", _fake_run)
+        # Stub the .store_id sidecar that _capture_tier reads at line 184-185.
+        store_id = tmp_path / "tier-2-managed" / ".store_id"
+        store_id.parent.mkdir(parents=True, exist_ok=True)
+        store_id.write_text("fake-store-name")
+
+    elif tier == 3:
+        from evaluation.harness.adapters import tier_3 as t3_adapter
+        from tier_3_graph import rag as t3_rag
+        monkeypatch.setattr(t3_adapter, "run_tier3", _fake_run)
+
+        class _StubRag:
+            async def initialize_storages(self):
+                return None
+
+        def _fake_build_rag(*a, **kw):
+            return _StubRag()
+
+        monkeypatch.setattr(t3_rag, "build_rag", _fake_build_rag)
+
+    elif tier == 4:
+        # Write a cached log fixture matching Tier 4's cached schema (used by
+        # run_tier4(from_cache=...) at evaluation/harness/adapters/tier_4.py).
+        cache_path = tmp_path / "tier-4-cached.json"
+        cached_log = {
+            "tier": "tier-4",
+            "timestamp": "2026-04-27T12:00:00Z",
+            "git_sha": "cached0",
+            "model": "google/gemini-2.5-flash",
+            "records": [
+                {
+                    "question_id": "q1",
+                    "question": "What is RAG?",
+                    "answer": "answer",
+                    "retrieved_contexts": ["c1"],
+                    "latency_s": 0.1,
+                    "cost_usd_at_capture": 0.0001,
+                    "error": None,
+                }
+            ],
+        }
+        cache_path.write_text(json.dumps(cached_log))
+        cli_args += ["--tier-4-from-cache", str(cache_path)]
+
+    elif tier == 5:
+        from evaluation.harness.adapters import tier_5 as t5_adapter
+        from tier_5_agentic import agent as t5_agent
+        monkeypatch.setattr(t5_adapter, "run_tier5", _fake_run)
+        monkeypatch.setattr(t5_agent, "build_agent", lambda *a, **kw: object())
+
+    # 3. Drive the real amain (and thus the real _capture_tier).
+    args = run_mod.build_parser().parse_args(cli_args)
+    rc = asyncio.run(run_mod.amain(args, _SilentConsole()))
+    assert rc == 0, f"amain returned non-zero rc={rc} for tier {tier}"
+
+    # 4. Read the queries JSON the real _capture_tier wrote.
+    queries_dir = tmp_path / "out" / "queries"
+    matches = sorted(queries_dir.glob(f"tier-{tier}-*.json"))
+    assert matches, f"No queries JSON written for tier {tier}"
+    data = json.loads(matches[0].read_text())
+
+    # 5. Per-tier truth-table assertion (CAP-03 / Plan 06-01 Task 3).
+    assert data["embedder"] == exp_emb, (
+        f"tier-{tier} embedder mismatch: got {data.get('embedder')!r}, "
+        f"expected {exp_emb!r}"
+    )
+    assert data["embedder_source"] == exp_src, (
+        f"tier-{tier} embedder_source mismatch: got "
+        f"{data.get('embedder_source')!r}, expected {exp_src!r}"
+    )
+
+    # 6. Regression guard — pre-existing top-level fields still present.
+    assert data.get("model"), "model field disappeared"
+    assert data.get("timestamp"), "timestamp field disappeared"
+    assert data.get("git_sha"), "git_sha field disappeared"
+
+
 def test_run_smoke_ids_unknown_returns_2(tmp_path, monkeypatch, capsys):
     """`--smoke-question-ids c,zzz` returns 2 + prints friendly red error citing 'zzz'."""
     from evaluation.harness import run as run_mod
