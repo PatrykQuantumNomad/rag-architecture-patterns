@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Tier 4 Graphml Regeneration** - Wipe `rag_anything_storage/tier-4-multimodal/`, re-ingest from MineRU JSON parsed outside the sandbox, smoke-tested before any full rerun ✓ 2026-05-05 [4/4 plans delivered; gap closure landed via Plan 02-04: JUDGE_MAX_TOKENS=8192 in score._build_judge → Tier 4 smoke PASS (5/5 faithfulness=1.0) AND Tier 5 smoke PASS (Phase 1 regression check intact)]
 - [x] **Phase 3: NaN Reason Instrumentation** - Distinguish `empty_contexts` vs `empty_statements` vs `json_parse_failure` in per-row metrics output ✓ 2026-05-05 [3/3 plans delivered; HARN-05 closed at unit (03-01) + integration (03-02) + live (03-03) levels; live smoke verdict PASS, n_unknown_nan=0 against real Gemini 2.5 Flash on 5-question Tier 5 capture, ~$0.014 cost vs $0.05 cost guard]
 - [x] **Phase 4: Freeze Tool** - `evaluation/harness/freeze.py` writes immutable `frozen/eval-numbers-vX.Y.md` + sidecar manifest with git SHA, capture timestamps, library versions ✓ 2026-05-05 [1/1 plan delivered; HARN-03 + HARN-04 closed at unit + CLI levels; freeze.py at exactly 95 LOC honoring max_lines:95 hard cap; sidecar manifest carries git_sha + git_dirty + ISO 8601 Z frozen_at + per-tier capture/cost/metrics relative paths + mtimes + judge {model, embedder, max_tokens=8192} + library_versions for the 4 critical libs (lightrag-hku 1.4.15 / raganything 1.2.10 / openai-agents 0.14.6 / ragas 0.4.3) + 2 bonus (litellm 1.83.0, chromadb 1.5.8); refuse-to-clobber default with prescribed wording; --force overwrites both md AND manifest; RuntimeError + exit 2 BEFORE any file write if any of the 4 critical libs missing; Phase 5 forward-contract signature locked at `freeze(version, force, results_dir, source) -> Path`; zero modifications to run.py / compare.py / score.py]
-- [ ] **Phase 5: Pipeline Driver** - `evaluation/harness/pipeline.py` runs capture → score → compare → freeze in one command, with single-tier rerun support
+- [~] **Phase 5: Pipeline Driver** - `evaluation/harness/pipeline.py` runs capture → score → compare → freeze in one command, with single-tier rerun support [1/2 plans delivered; HARN-01 + HARN-02 closed at unit + integration levels via Plan 05-01; Plan 05-02 (live smoke backstop) pending]
 - [ ] **Phase 6: Embedder Provenance Capture** - Per-tier embedder model name recorded in capture JSON so the embedder-confound disclosure is data-backed
 - [ ] **Phase 7: Full 5-Tier Rerun** - Capture all 5 tiers × 30 questions on one date with one git SHA, NaN counts down to expected residuals
 - [ ] **Phase 8: Multi-Judge Spot-Check** - Re-score 5 questions × 3 tiers with a non-Gemini judge, capture delta in structured JSON
@@ -88,7 +88,9 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. User can run `python -m evaluation.harness.pipeline --tiers 4 --tier-4-from-cache <path>` and see only Tier 4's capture and metrics regenerate; tiers 1, 2, 3, 5 retain their previous run data and are picked up by `_latest()` mtime resolution in `compare.py`
   3. User can confirm `pipeline.py` calls existing `run.amain()` / `score.amain()` / `compare._run()` as in-process function calls (not subprocesses) so exit codes propagate and asyncio loops are reused
   4. User can confirm cost-surprise prompts fire once per phase (not five times) when running a full sweep
-**Plans**: TBD
+**Plans**: 2 plans (2 waves; 05-02 depends_on 05-01 — wave 2 is the live smoke backstop)
+- [x] 05-01-PLAN.md — TDD red→green: pipeline.py (≤220 raw LOC) + ~6-LOC additive run.py kwarg plumb-through + 12 offline tests (10 unit + 2 integration). Closes HARN-01 + HARN-02 at unit + integration levels. **COMPLETE 2026-05-06** (~12 min wall; commits 3259ab1 RED + aa1640c GREEN; 189/220 LOC pipeline.py with 14% buffer; 15/15 offline tests PASS; run.py +10 raw insertions / -3 deletions; byte-identical guards intact for score.py / compare.py / freeze.py; regression baseline 88 → 103 PASS; 6/6 CLI quality gate sub-checks PASS; two Rule-1/3 micro-deviations rolled into the GREEN commit — see SUMMARY)
+- [ ] 05-02-PLAN.md — Live smoke backstop: 1 @pytest.mark.live test against real OpenRouter API (Tier 5 × 5q, ≤$0.05). Closes HARN-01 at live level. Non-autonomous (cost-acknowledgement checkpoint).
 
 ### Phase 6: Embedder Provenance Capture
 **Goal**: Every per-tier capture JSON records the embedding model used by that tier so the frozen doc's embedder-confound table is generated from data, not authored from memory.
@@ -147,7 +149,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 2. Tier 4 Graphml Regeneration | 4/4 | ✓ Verified | 2026-05-05 |
 | 3. NaN Reason Instrumentation | 3/3 | ✓ Verified | 2026-05-05 |
 | 4. Freeze Tool | 1/1 | ✓ Complete | 2026-05-05 |
-| 5. Pipeline Driver | 0/TBD | Not started | - |
+| 5. Pipeline Driver | 1/2 | In progress (Plan 05-02 pending) | 2026-05-06 (Plan 05-01) |
 | 6. Embedder Provenance Capture | 0/TBD | Not started | - |
 | 7. Full 5-Tier Rerun | 0/TBD | Not started | - |
 | 8. Multi-Judge Spot-Check | 0/TBD | Not started | - |
