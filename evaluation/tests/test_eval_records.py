@@ -92,3 +92,57 @@ def test_score_record_full_pass():
     )
     assert sr.nan_reason is None
     assert 0.0 <= sr.faithfulness <= 1.0
+
+
+# ---------------------------------------------------------------------------
+# Phase 6 / Plan 06-01 — embedder + embedder_source provenance fields.
+# ---------------------------------------------------------------------------
+
+
+def test_query_log_carries_embedder_field():
+    """QueryLog accepts and round-trips embedder + embedder_source.
+
+    CAP-03 / 06-01 Task 1. Construct a QueryLog with both new fields and
+    confirm they survive Pydantic v2 model_dump_json -> model_validate_json
+    round-trip with their original values. This locks the schema contract
+    consumed by run.py / eval_capture.py / compare.py / freeze.py.
+    """
+    log = QueryLog(
+        tier="tier-1",
+        timestamp="2026-05-06T12:00:00Z",
+        git_sha="abc1234",
+        model="google/gemini-2.5-flash",
+        embedder="openai/text-embedding-3-small",
+        embedder_source="openrouter",
+        records=[],
+    )
+    assert log.embedder == "openai/text-embedding-3-small"
+    assert log.embedder_source == "openrouter"
+
+    roundtrip = QueryLog.model_validate_json(log.model_dump_json())
+    assert roundtrip.embedder == "openai/text-embedding-3-small"
+    assert roundtrip.embedder_source == "openrouter"
+    # Pre-existing fields must still round-trip cleanly (regression guard).
+    assert roundtrip.tier == "tier-1"
+    assert roundtrip.git_sha == "abc1234"
+    assert roundtrip.model == "google/gemini-2.5-flash"
+
+
+def test_query_log_legacy_json_loads_with_none_embedder():
+    """Legacy QueryLog JSONs (no embedder fields) load with None defaults.
+
+    CAP-03 / 06-01 Task 1 / D-BACKCOMPAT. evaluation/results/queries/ is
+    gitignored — older locally-cached JSONs lack the new embedder fields.
+    Pydantic v2's Optional[str] = None default must absorb their absence
+    without raising; the loaded instance reads None for both new fields.
+    """
+    legacy_json = (
+        '{"tier":"tier-1","timestamp":"2026-05-02T17:26:59Z",'
+        '"git_sha":"ce5c2ad","model":"google/gemini-2.5-flash","records":[]}'
+    )
+    log = QueryLog.model_validate_json(legacy_json)
+    assert log.embedder is None
+    assert log.embedder_source is None
+    # Pre-existing fields still load (regression guard).
+    assert log.tier == "tier-1"
+    assert log.git_sha == "ce5c2ad"
