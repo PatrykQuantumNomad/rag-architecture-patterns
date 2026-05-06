@@ -26,7 +26,11 @@ import pytest
 from evaluation.harness.freeze import freeze
 
 
-def _build_fixture(tmp_path: Path, tiers: tuple[int, ...] = (1, 2, 3, 4, 5)) -> Path:
+def _build_fixture(
+    tmp_path: Path,
+    tiers: tuple[int, ...] = (1, 2, 3, 4, 5),
+    with_embedder: bool = False,
+) -> Path:
     """Build a fake results_dir under tmp_path with the schema aggregate_tier reads.
 
     Returns the results_dir Path. Schema mirrors evaluation/results/ layout:
@@ -36,6 +40,10 @@ def _build_fixture(tmp_path: Path, tiers: tuple[int, ...] = (1, 2, 3, 4, 5)) -> 
         costs/tier-{N}-2026-05-05T10_00_00Z.json
         costs/ragas-judge-2026-05-05T10_00_00Z.json
         metrics/tier-{N}-2026-05-05T10_00_00Z.json
+
+    When ``with_embedder=True`` (Plan 06-01 Task 6), each tier's queries JSON
+    is populated with the truth-table (embedder, embedder_source) tuple so the
+    freeze manifest exercises the new field plumbing.
     """
     results_dir = tmp_path / "results"
     results_dir.mkdir()
@@ -47,19 +55,33 @@ def _build_fixture(tmp_path: Path, tiers: tuple[int, ...] = (1, 2, 3, 4, 5)) -> 
     costs_dir.mkdir()
     metrics_dir.mkdir()
 
-    queries_payload = {
-        "records": [{"question_id": "q1", "latency_s": 1.0}],
-        "timestamp": "2026-05-05T10:00:00Z",
-        "git_sha": "deadbeef",
-        "model": "google/gemini-2.5-flash",
-    }
     cost_payload = {"totals": {"usd": 0.01}, "queries": []}
     metrics_payload: list = []  # empty list — aggregate_tier handles
     judge_payload = {
         "queries": [{"kind": "llm", "model": "google/gemini-2.5-flash"}]
     }
 
+    # Plan 06-01 Task 6 truth table — D-ROADMAP-OVERRIDE for Tier 5.
+    embedder_truth = {
+        1: ("openai/text-embedding-3-small", "openrouter"),
+        2: ("gemini-embedding-001", "google-managed"),
+        3: ("openai/text-embedding-3-small", "openrouter"),
+        4: ("openai/text-embedding-3-small", "openrouter"),
+        5: ("openai/text-embedding-3-small", "openrouter"),
+    }
+
     for tier in tiers:
+        queries_payload: dict = {
+            "records": [{"question_id": "q1", "latency_s": 1.0}],
+            "timestamp": "2026-05-05T10:00:00Z",
+            "git_sha": "deadbeef",
+            "model": "google/gemini-2.5-flash",
+        }
+        if with_embedder:
+            emb, src = embedder_truth[tier]
+            queries_payload["embedder"] = emb
+            queries_payload["embedder_source"] = src
+
         (queries_dir / f"tier-{tier}-2026-05-05T10_00_00Z.json").write_text(
             json.dumps(queries_payload)
         )
@@ -210,6 +232,43 @@ def test_freeze_no_source_errors(tmp_path):
         freeze(version="1.0", results_dir=results_dir)
 
     assert "comparison.md" in str(exc_info.value)
+
+
+def test_freeze_manifest_carries_embedder_per_tier(tmp_path):
+    """Plan 06-01 Task 6 / CAP-03: freeze() per_tier manifest entries
+    carry embedder + embedder_source from each tier's queries JSON.
+
+    D-ROADMAP-OVERRIDE locked in the tier-5 assertion: Tier 5 reads the
+    SAME (embedder, embedder_source) as Tier 1 — NOT a hosted vector
+    store. Phase 4's judge-block contract (separate concept) MUST be
+    preserved byte-identical (regression guard).
+    """
+    results_dir = _build_fixture(tmp_path, with_embedder=True)
+    out_md = freeze(version="6.0", force=False, results_dir=results_dir)
+    manifest = json.loads(out_md.with_suffix(".manifest.json").read_text())
+
+    expected = {
+        "tier-1": ("openai/text-embedding-3-small", "openrouter"),
+        "tier-2": ("gemini-embedding-001", "google-managed"),
+        "tier-3": ("openai/text-embedding-3-small", "openrouter"),
+        "tier-4": ("openai/text-embedding-3-small", "openrouter"),
+        # D-ROADMAP-OVERRIDE — Tier 5 IS Tier 1's embedder.
+        "tier-5": ("openai/text-embedding-3-small", "openrouter"),
+    }
+    for tier_label, (emb, src) in expected.items():
+        entry = manifest["per_tier"][tier_label]
+        assert entry["embedder"] == emb, (
+            f"{tier_label} embedder mismatch: got {entry.get('embedder')!r}, "
+            f"expected {emb!r}"
+        )
+        assert entry["embedder_source"] == src, (
+            f"{tier_label} embedder_source mismatch: got "
+            f"{entry.get('embedder_source')!r}, expected {src!r}"
+        )
+
+    # Phase 4 judge-block contract preserved (separate concept — judge
+    # embedder is not the per-tier embedder).
+    assert manifest["judge"]["embedder"] == "openai/text-embedding-3-small"
 
 
 def test_manifest_missing_tier(tmp_path):
