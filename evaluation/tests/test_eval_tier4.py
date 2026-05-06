@@ -154,3 +154,39 @@ def test_run_tier4_library_mode_happy(monkeypatch):
     # Either contexts populated from the probe OR empty if the lightrag QueryParam
     # path isn't installed in this test env — both acceptable
     assert isinstance(rec.retrieved_contexts, list)
+
+
+def test_eval_capture_writes_embedder_for_tier_4():
+    """Plan 06-01 Task 4 / D-CAPTURE-ENTRYPOINTS: tier-4-multimodal/scripts/
+    eval_capture.py constructs its QueryLog with embedder + embedder_source
+    populated from tier_4_multimodal.rag's module-level constants.
+
+    Static-source approach (recommended in 06-01-PLAN.md): mocking the heavy
+    RAG-Anything / MineRU stack is fragile and brittle. The QueryLog
+    construction site at eval_capture.py:195-201 is a static literal — the
+    embedder identity is known at code-edit time. Asserting on the source
+    text guarantees the wiring is in place without paying mock overhead.
+    """
+    eval_capture_path = (
+        Path(__file__).resolve().parent.parent.parent
+        / "tier-4-multimodal"
+        / "scripts"
+        / "eval_capture.py"
+    )
+    assert eval_capture_path.exists(), f"missing {eval_capture_path}"
+    src = eval_capture_path.read_text(encoding="utf-8")
+
+    # 1. The import line must pull EMBEDDER_SOURCE from tier_4_multimodal.rag
+    # alongside DEFAULT_LLM_MODEL + DEFAULT_EMBED_MODEL.
+    assert "EMBEDDER_SOURCE" in src, (
+        "eval_capture.py does not import EMBEDDER_SOURCE — Plan 06-01 Task 4 "
+        "missing"
+    )
+
+    # 2. The QueryLog construction site must thread BOTH new kwargs.
+    assert "embedder=DEFAULT_EMBED_MODEL" in src, (
+        "eval_capture.py QueryLog(...) does not pass embedder=DEFAULT_EMBED_MODEL"
+    )
+    assert "embedder_source=EMBEDDER_SOURCE" in src, (
+        "eval_capture.py QueryLog(...) does not pass embedder_source=EMBEDDER_SOURCE"
+    )
