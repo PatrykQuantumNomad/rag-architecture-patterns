@@ -498,3 +498,186 @@ def test_dual_sha_provenance(tmp_path, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "75f6f1b" in out
     assert "DEADBEEF" in out
+
+
+# ---------------------------------------------------------------------------
+# Section C (Plan 08-02 — live smoke backstop) — closes CAP-02 at LIVE level.
+# Mirrors the Plan 05-02 / Plan 03-03 live-smoke-backstop pattern.
+# Two-tier cost enforcement (BLOCKER #2 fix):
+#   - SOFT ceiling $0.30 = ROADMAP SC-3 envelope (escalates as checkpoint).
+#   - HARD ceiling $0.50 = runaway protection (test fails outright).
+# ---------------------------------------------------------------------------
+
+SOFT_CEILING_USD = 0.30   # ROADMAP SC-3 envelope (BLOCKER #2 — soft tier)
+HARD_CEILING_USD = 0.50   # runaway protection (BLOCKER #2 — hard tier)
+
+
+@pytest.mark.live
+def test_live_spotcheck_under_budget(live_eval_keys_ok, tmp_path, capsys):
+    """Phase 8 Plan 08-02 — live smoke backstop closing CAP-02 at LIVE level.
+
+    Drives multi_judge_spotcheck.amain against the Phase 7 sweep_sha=75f6f1b
+    capture and the real OpenRouter API (Claude Haiku 4.5 secondary judge).
+
+    Two-tier cost enforcement (BLOCKER #2 fix):
+      - SOFT ceiling $0.30 (ROADMAP SC-3 envelope): exceedance prints
+        ``## CHECKPOINT REACHED — SC-3 envelope exceeded`` with breakdown;
+        test fails via dedicated AssertionError that the orchestrator
+        treats as a checkpoint (PASS-WITH-DEVIATION outcome path).
+      - HARD ceiling $0.50: exceedance fails the test outright (runaway).
+
+    Source-SHA pinning: produced JSON's ``source_capture_git_sha`` MUST equal
+    ``75f6f1b`` (the Phase 7 sweep_sha) regardless of current HEAD —
+    BLOCKER #3 fix verified end-to-end against real source captures.
+    """
+    import asyncio
+    from rich.console import Console
+
+    from evaluation.harness import multi_judge_spotcheck
+
+    # Stage results dir under tmp_path so live artifacts don't pollute repo.
+    results_dir = tmp_path / "results"
+    results_dir.mkdir()
+    (results_dir / "queries").mkdir()
+    (results_dir / "metrics").mkdir()
+    (results_dir / "costs").mkdir()
+
+    # Stage the Phase 7 capture into tmp_path so amain reads from there
+    # (NOT from evaluation/results/, so prod data stays clean even on bug).
+    src_repo = _REPO_ROOT
+    for tier in PHASE_7_TIERS:
+        for kind in ("queries", "metrics"):
+            src = src_repo / "evaluation" / "results" / kind / \
+                f"tier-{tier}-{PHASE_7_TS_FILENAME}.json"
+            dst = results_dir / kind / f"tier-{tier}-{PHASE_7_TS_FILENAME}.json"
+            dst.write_bytes(src.read_bytes())
+
+    # Snapshot prod costs dir so we can assert no NEW files leak there
+    # (Pitfall 2 / D-7 — second-time verification at LIVE level).
+    prod_costs = src_repo / "evaluation" / "results" / "costs"
+    pre_run_costs = (
+        set(prod_costs.glob("multi-judge-spotcheck-*.json"))
+        if prod_costs.exists()
+        else set()
+    )
+
+    # Build args via build_parser to match the production CLI path.
+    parser = multi_judge_spotcheck.build_parser()
+    args = parser.parse_args([
+        "--source-ts", PHASE_7_SWEEP_TS,
+        "--tiers", "1,4,5",
+        "--results-dir", str(results_dir),
+        "--yes",
+    ])
+
+    # Invoke amain() in-process (subprocess-free; mirrors Plan 05-02 pattern).
+    rc = asyncio.run(multi_judge_spotcheck.amain(args, Console()))
+    assert rc == 0, f"multi_judge_spotcheck.amain exited rc={rc}"
+
+    # 1. Spot-check JSON exists and has 15 cells (SC-1 + SC-2 + SC-4).
+    spotcheck_files = list((results_dir / "metrics").glob("multi-judge-spotcheck-*.json"))
+    assert len(spotcheck_files) == 1, \
+        f"Expected 1 spot-check file, got {len(spotcheck_files)}: {spotcheck_files}"
+    spotcheck = json.loads(spotcheck_files[0].read_text())
+
+    # Schema and provenance assertions
+    assert spotcheck["$schema_version"] == "1.0"
+    assert spotcheck["source_capture_git_sha"] == PHASE_7_SWEEP_SHA, (
+        f"source_capture_git_sha={spotcheck['source_capture_git_sha']!r}; "
+        f"expected {PHASE_7_SWEEP_SHA!r} (Phase 7 sweep_sha — BLOCKER #3 fix invariant)"
+    )
+    assert spotcheck["source_capture_timestamp"] == PHASE_7_SWEEP_TS
+    assert spotcheck["secondary_judge"]["model"] == "anthropic/claude-haiku-4.5"
+    assert spotcheck["secondary_judge"]["model_slug"] == "openrouter/anthropic/claude-haiku-4.5"
+    assert spotcheck["secondary_judge"]["max_tokens"] == 8192, (
+        "secondary_judge.max_tokens must be 8192 (Plan 02-04 lesson — JUDGE_MAX_TOKENS)"
+    )
+    assert spotcheck["primary_judge"]["model"] == "google/gemini-2.5-flash"
+
+    # 15-cell shape (5 IDs × 3 tiers)
+    cells = spotcheck["cells"]
+    assert len(cells) == 15, f"Expected 15 cells (5 IDs × 3 tiers), got {len(cells)}"
+
+    # Per-cell: primary + secondary + delta blocks for all 3 metrics
+    for c in cells:
+        assert {"question_id", "tier", "primary", "secondary", "delta"} <= c.keys(), (
+            f"Cell missing required keys: {c.keys()}"
+        )
+        for block_name in ("primary", "secondary", "delta"):
+            block = c[block_name]
+            for metric in ("faithfulness", "answer_relevancy", "context_precision"):
+                assert metric in block, (
+                    f"Missing {metric} in {block_name} of "
+                    f"{c['question_id']}/{c['tier']}"
+                )
+
+    # Tier coverage check — 5 cells per tier
+    by_tier: dict[str, int] = {}
+    for c in cells:
+        by_tier[c["tier"]] = by_tier.get(c["tier"], 0) + 1
+    assert by_tier == {"tier-1": 5, "tier-4": 5, "tier-5": 5}, (
+        f"Per-tier cell counts wrong: {by_tier}"
+    )
+
+    # 2. Cost ledger written to results_dir/costs/ (Pitfall 2 / D-7).
+    cost_files = list((results_dir / "costs").glob("multi-judge-spotcheck-*.json"))
+    assert len(cost_files) == 1, \
+        f"Expected 1 cost ledger in results_dir/costs/, got {cost_files}"
+    cost = json.loads(cost_files[0].read_text())
+
+    # Determine total_usd: prefer estimator.estimated_usd when fallback fired
+    # (RESEARCH A6 / D-8 — Phase 7 ragas-judge ledgers consistently show
+    # total_usd=0 because LiteLLM usage parser returns 0 for non-OpenAI providers).
+    raw_total_usd = float(cost.get("totals", {}).get("usd", 0.0) or 0.0)
+    estimator = cost.get("estimator", {})
+    estimated_usd = float(estimator.get("estimated_usd", 0.0) or 0.0)
+    total_usd = max(raw_total_usd, estimated_usd)
+
+    # 3. Two-tier cost enforcement (BLOCKER #2 fix).
+    # 3a. HARD ceiling — runaway protection (test FAILS outright if breached).
+    assert total_usd <= HARD_CEILING_USD, (
+        f"Live spotcheck spent ${total_usd:.4f} > ${HARD_CEILING_USD:.2f} "
+        f"HARD ceiling — runaway"
+    )
+
+    # 3b. SOFT ceiling — ROADMAP SC-3 envelope (escalates as checkpoint).
+    if total_usd > SOFT_CEILING_USD:
+        breakdown_lines = [
+            "## CHECKPOINT REACHED — SC-3 envelope exceeded "
+            f"(${total_usd:.4f} > ${SOFT_CEILING_USD:.2f})",
+            "",
+            "Cost breakdown:",
+            f"  raw_total_usd:    ${raw_total_usd:.4f}",
+            f"  estimated_usd:    ${estimated_usd:.4f}",
+            f"  effective_total:  ${total_usd:.4f}",
+            f"  SC-3 envelope:    $0.10–$0.30 (ROADMAP)",
+            f"  HARD ceiling:     ${HARD_CEILING_USD:.2f} (NOT breached)",
+            f"  estimated:        {estimator.get('estimated', False)}",
+            "",
+            "User decision required:",
+            "  - 'accept'  → mark plan PASS-WITH-DEVIATION, record SC-3 deviation",
+            "  - 'abort'   → mark plan FAIL, no rerun",
+            "  - 'rerun'   → re-invoke live test (additional ≤ $0.50 spend authorized)",
+        ]
+        print("\n".join(breakdown_lines))
+        raise AssertionError(
+            f"## CHECKPOINT REACHED — SC-3 envelope exceeded "
+            f"(${total_usd:.4f} > ${SOFT_CEILING_USD:.2f}); see captured output"
+        )
+
+    # 4. NO production-default cost path written (Pitfall 2 / D-7 — second pass).
+    if prod_costs.exists():
+        post_run_costs = set(prod_costs.glob("multi-judge-spotcheck-*.json"))
+        new_prod_costs = post_run_costs - pre_run_costs
+        assert not new_prod_costs, (
+            f"Cost ledger leaked to prod path: {new_prod_costs}"
+        )
+
+    # Print summary for SUMMARY provenance (visible under -v / -s).
+    print(
+        f"\n[live spotcheck] total_usd=${total_usd:.6f} "
+        f"raw=${raw_total_usd:.6f} estimated=${estimated_usd:.6f} "
+        f"source_sha={spotcheck['source_capture_git_sha']} "
+        f"n_cells={len(cells)} "
+        f"by_tier={by_tier}"
+    )
