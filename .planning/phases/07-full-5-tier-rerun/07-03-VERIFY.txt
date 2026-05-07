@@ -1,0 +1,62 @@
+==========================================================
+Phase 7 Plan 03 — Post-Sweep Verification
+Date (UTC): 2026-05-07T12:04:25Z
+Repo HEAD:  75f6f1b
+==========================================================
+
+## Success Criterion 1: pipeline ran capture → score → compare
+  comparison.md: present
+  tier rows in rollup+per-class: 10 (expected ≥5)
+  Embedder-by-tier table: present (matched **Embedder by tier:** pattern)
+  → SC-1: PASS
+
+## Success Criterion 2: single git SHA across 5 queries JSONs
+  per-tier git_sha:
+     1  tier-75f6f1b
+     2  tier-75f6f1b
+     3  tier-75f6f1b
+     4  tier-75f6f1b
+     5  tier-75f6f1b
+  distinct count: 1 (expected 1)
+  sweep_sha: 75f6f1b
+  → SC-2: PASS (5/5 queries; cost+metrics JSONs intentionally do not carry git_sha)
+
+## Success Criterion 3: Tier 4 NaN < 5/30
+  tier-4 metrics: evaluation/results/metrics/tier-4-2026-05-07T10_59_10Z.json
+  nan_count: 2 / 30
+  nan_reason breakdown:
+    empty_contexts: 2
+  → SC-3: PASS
+
+## Success Criterion 4: Tier 5 NaN < 5/30
+  tier-5 metrics: evaluation/results/metrics/tier-5-2026-05-07T10_59_10Z.json
+  nan_count: 0 / 30
+  nan_reason breakdown:
+  → SC-4: PASS
+
+## Success Criterion 5: total spend ≤ $3 across 10 cost JSONs
+  per-file totals:
+    tier-1-eval:                 0.034488 USD  evaluation/results/costs/tier-1-eval-20260507T105910Z.json
+    tier-2-eval:                 0.029826 USD  evaluation/results/costs/tier-2-eval-20260507T110034Z.json
+    tier-3-eval:                 0.000112 USD  evaluation/results/costs/tier-3-eval-20260507T110347Z.json
+    tier-4-eval:                 0.000000 USD  evaluation/results/costs/tier-4-eval-20260507T110431Z.json
+    tier-5-eval:                 0.053418 USD  evaluation/results/costs/tier-5-eval-20260507T110431Z.json
+    ragas-judge-tier-1:          0.000000 USD  evaluation/results/costs/ragas-judge-tier-1-20260507T111906Z.json
+    ragas-judge-tier-2:          0.000000 USD  evaluation/results/costs/ragas-judge-tier-2-20260507T113156Z.json
+    ragas-judge-tier-3:          0.000000 USD  evaluation/results/costs/ragas-judge-tier-3-20260507T114151Z.json
+    ragas-judge-tier-4:          0.000000 USD  evaluation/results/costs/ragas-judge-tier-4-20260507T115118Z.json
+    ragas-judge-tier-5:          0.000000 USD  evaluation/results/costs/ragas-judge-tier-5-20260507T120253Z.json
+  total: 0.117844 USD (ceiling $3.00)
+  → SC-5: PASS
+
+## Bonus: same-date check across 5 captures
+  unique dates: 1 (2026-05-07)
+  → bonus: PASS
+
+==========================================================
+OVERALL VERDICT: PASS
+  sweep_sha:   75f6f1b
+  tier-4 NaN:  2/30
+  tier-5 NaN:  0/30
+  total spend: $0.1178
+==========================================================
