@@ -94,3 +94,407 @@ def test_phase_7_captures_have_all_5_ids(capsys):
     assert not failures, (
         "Phase 7 capture pre-flight failed:\n  " + "\n  ".join(failures)
     )
+
+
+# ---------------------------------------------------------------------------
+# Section B (Task 1 — RED) — these tests import from
+# evaluation.harness.multi_judge_spotcheck which does NOT exist yet.
+# Collection MUST raise ImportError / ModuleNotFoundError on every test below
+# until Task 2 GREEN lands the impl.
+# ---------------------------------------------------------------------------
+
+from evaluation.harness import multi_judge_spotcheck as mjs  # noqa: E402
+from evaluation.harness.multi_judge_spotcheck import (  # noqa: E402
+    DEFAULT_TIERS,
+    SECONDARY_JUDGE_DEFAULT,
+    WANTED_IDS as MODULE_WANTED_IDS,
+    _estimate_cost_fallback,
+    _filter_records,
+    _read_primary_metrics,
+    _read_source_sha,
+    _signed_delta,
+    amain,
+    build_parser,
+)
+from evaluation.harness.records import EvalRecord, QueryLog, ScoreRecord  # noqa: E402
+
+
+# Helpers -------------------------------------------------------------------
+
+WANTED_TUPLE = (
+    "single-hop-001",
+    "single-hop-002",
+    "multi-hop-001",
+    "multi-hop-002",
+    "multimodal-001",
+)
+
+
+def _make_eval_record(qid: str, *, contexts: list[str] | None = None) -> EvalRecord:
+    return EvalRecord(
+        question_id=qid,
+        question=f"Q-{qid}?",
+        answer=f"A-{qid}.",
+        retrieved_contexts=contexts if contexts is not None else [f"ctx-{qid}"],
+        latency_s=0.5,
+        cost_usd_at_capture=0.0001,
+        error=None,
+    )
+
+
+def _make_query_log(
+    tier_str: str, qids: list[str], *, git_sha: str = "75f6f1b",
+    timestamp: str = "2026-05-07T10:59:10Z",
+) -> QueryLog:
+    return QueryLog(
+        tier=tier_str,
+        timestamp=timestamp,
+        git_sha=git_sha,
+        model="google/gemini-2.5-flash",
+        embedder="openai/text-embedding-3-small",
+        embedder_source="openrouter",
+        records=[_make_eval_record(q) for q in qids],
+    )
+
+
+def _write_query_log_file(path: Path, log: QueryLog) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(log.model_dump_json(indent=2), encoding="utf-8")
+
+
+def _write_metrics_file(path: Path, qids: list[str], *,
+                        f_val: float = 0.50,
+                        ar_val: float = 0.60,
+                        cp_val: float = 0.70) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = [
+        {
+            "question_id": q,
+            "faithfulness": f_val,
+            "answer_relevancy": ar_val,
+            "context_precision": cp_val,
+            "nan_reason": None,
+        }
+        for q in qids
+    ]
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def _build_args(tmp_path: Path, *, source_ts: str = "2026-05-07T10:59:10Z",
+                tiers: tuple[int, ...] = (1, 4, 5),
+                judge: str = "openrouter/anthropic/claude-haiku-4.5",
+                question_ids: str = "",
+                judge_emb: str = "openrouter/openai/text-embedding-3-small"):
+    parser = build_parser()
+    return parser.parse_args([
+        "--source-ts", source_ts,
+        "--tiers", ",".join(str(t) for t in tiers),
+        "--judge", judge,
+        "--judge-emb", judge_emb,
+        "--question-ids", question_ids,
+        "--results-dir", str(tmp_path),
+        "--yes",
+    ])
+
+
+def _stub_score_query_log_factory(secondary_offsets: dict[str, float] | None = None,
+                                  usage: dict | None = None):
+    """Return a stub `score_query_log` async fn returning deterministic ScoreRecords.
+
+    `secondary_offsets[qid]` is a float added to the (faithfulness, answer_relevancy,
+    context_precision) baseline of (0.55, 0.65, 0.75) per cell — gives a non-zero
+    delta vs. the metrics file values (0.50, 0.60, 0.70).
+    """
+    secondary_offsets = secondary_offsets or {}
+    usage = usage or {"input_tokens": 0, "output_tokens": 0, "n_scored": 0}
+
+    async def _stub(log, qa_index, judge_llm, judge_emb, batch_size=10,
+                    raise_exceptions=False):
+        scores = []
+        for r in log.records:
+            off = secondary_offsets.get(r.question_id, 0.0)
+            scores.append(
+                ScoreRecord(
+                    question_id=r.question_id,
+                    faithfulness=0.55 + off,
+                    answer_relevancy=0.65 + off,
+                    context_precision=0.75 + off,
+                    nan_reason=None,
+                )
+            )
+        usage_out = dict(usage)
+        usage_out["n_scored"] = len(log.records)
+        return scores, usage_out
+
+    return _stub
+
+
+def _stub_build_judge(*args, **kwargs):
+    """Return a (None, None) tuple — no real LLM/embedder construction in tests."""
+    return (None, None)
+
+
+def _stub_load_golden_qa():
+    """Return a stub golden QA list — all wanted IDs with placeholder reference."""
+    return [
+        {"id": q, "expected_answer": f"ref-{q}"}
+        for q in WANTED_TUPLE
+    ]
+
+
+# Tests ---------------------------------------------------------------------
+
+
+def test_module_imports():
+    """Locks D-1, D-2, D-3 module constants."""
+    assert MODULE_WANTED_IDS == WANTED_TUPLE
+    assert DEFAULT_TIERS == (1, 4, 5)
+    assert SECONDARY_JUDGE_DEFAULT == "openrouter/anthropic/claude-haiku-4.5"
+
+
+def test_signed_delta_with_none():
+    """Pitfall 5 / Pattern 4 — None propagates symmetrically."""
+    assert _signed_delta(0.75, 0.82) == pytest.approx(-0.07)
+    assert _signed_delta(None, 0.5) is None
+    assert _signed_delta(0.5, None) is None
+    assert _signed_delta(None, None) is None
+
+
+def test_filter_records_deterministic_order():
+    """Pitfall 7 — _filter_records iterates WANTED_IDS, NOT source list order."""
+    reverse = list(reversed(WANTED_TUPLE))
+    log = _make_query_log("tier-1", reverse)
+    out = _filter_records(log, WANTED_TUPLE)
+    assert [r.question_id for r in out.records] == list(WANTED_TUPLE)
+
+
+def test_filter_records_missing_id_aborts():
+    """Pitfall 4 — when a wanted ID is missing, returns log with len < 5."""
+    log = _make_query_log("tier-1", list(WANTED_TUPLE[:4]))  # only 4 of 5
+    out = _filter_records(log, WANTED_TUPLE)
+    assert len(out.records) == 4
+    assert "multimodal-001" not in {r.question_id for r in out.records}
+
+
+def test_read_primary_metrics_pins_to_ts(tmp_path):
+    """Pattern 3 / Pitfall 3 — pin to ts, NOT mtime."""
+    metrics_dir = tmp_path / "metrics"
+    metrics_dir.mkdir()
+    pinned_path = metrics_dir / "tier-1-2026-05-07T10_59_10Z.json"
+    newer_path = metrics_dir / "tier-1-2026-05-07T11_00_00Z.json"
+    _write_metrics_file(pinned_path, list(WANTED_TUPLE), f_val=0.10)
+    _write_metrics_file(newer_path, list(WANTED_TUPLE), f_val=0.99)
+    # Touch newer to ensure mtime is later
+    import os
+    import time
+    time.sleep(0.01)
+    os.utime(newer_path, None)
+
+    out = _read_primary_metrics(metrics_dir, 1, "2026-05-07T10:59:10Z")
+    # Must load PINNED file (f=0.10), NOT mtime-newest (f=0.99)
+    assert out["single-hop-001"]["faithfulness"] == pytest.approx(0.10)
+
+
+def test_read_source_sha_returns_log_git_sha_not_head(tmp_path, monkeypatch):
+    """BLOCKER #3 / Pitfall 3 — helper reads src_log.git_sha, NEVER _git_sha()."""
+    queries_dir = tmp_path / "queries"
+    log = _make_query_log("tier-1", list(WANTED_TUPLE), git_sha="75f6f1b")
+    _write_query_log_file(
+        queries_dir / "tier-1-2026-05-07T10_59_10Z.json", log,
+    )
+    # Simulate HEAD has advanced past Phase 7 — _git_sha() returns DEADBEEF.
+    monkeypatch.setattr(mjs, "_git_sha", lambda: "DEADBEEF")
+
+    sha = _read_source_sha(queries_dir, [1], "2026-05-07T10:59:10Z")
+    assert sha == "75f6f1b"
+    assert sha != "DEADBEEF"
+
+    # Repeat for 3 tiers — consistency check.
+    for t in (4, 5):
+        _write_query_log_file(
+            queries_dir / f"tier-{t}-2026-05-07T10_59_10Z.json",
+            _make_query_log(f"tier-{t}", list(WANTED_TUPLE), git_sha="75f6f1b"),
+        )
+    sha_multi = _read_source_sha(queries_dir, [1, 4, 5], "2026-05-07T10:59:10Z")
+    assert sha_multi == "75f6f1b"
+
+
+def test_estimate_cost_fallback():
+    """RESEARCH A6 / D-8 — estimator triggers when usage is zero, passes-through otherwise."""
+    # Estimated path
+    est = _estimate_cost_fallback(
+        {"input_tokens": 0, "output_tokens": 0, "n_scored": 5},
+        "anthropic/claude-haiku-4.5", n_scored=5,
+    )
+    assert est["estimated"] is True
+    assert est["input_tokens"] > 0
+    assert est["output_tokens"] > 0
+    assert est["usd"] > 0.0
+    assert est["usd"] < 0.05
+
+    # Real-usage path
+    real = _estimate_cost_fallback(
+        {"input_tokens": 1000, "output_tokens": 200, "n_scored": 5},
+        "anthropic/claude-haiku-4.5", n_scored=5,
+    )
+    assert real["estimated"] is False
+    assert real["input_tokens"] == 1000
+    assert real["output_tokens"] == 200
+    assert real["usd"] > 0.0
+
+
+def _setup_amain_inputs(tmp_path: Path, *, missing_qid_for_tier: int | None = None,
+                        source_git_sha: str = "75f6f1b"):
+    """Wire up a complete tmp_path with queries+metrics for tiers 1, 4, 5."""
+    queries_dir = tmp_path / "queries"
+    metrics_dir = tmp_path / "metrics"
+    for tier in (1, 4, 5):
+        qids = list(WANTED_TUPLE)
+        if missing_qid_for_tier == tier:
+            qids = qids[:4]  # drop multimodal-001
+        log = _make_query_log(f"tier-{tier}", qids, git_sha=source_git_sha)
+        _write_query_log_file(
+            queries_dir / f"tier-{tier}-2026-05-07T10_59_10Z.json", log,
+        )
+        _write_metrics_file(
+            metrics_dir / f"tier-{tier}-2026-05-07T10_59_10Z.json",
+            list(WANTED_TUPLE),  # metrics always have all 5 (delta will skip missing src)
+        )
+    return queries_dir, metrics_dir
+
+
+def _patch_amain_internals(monkeypatch, *, head_sha: str = "75f6f1b",
+                           usage: dict | None = None):
+    """Patch the module's external dependencies for offline integration tests."""
+    monkeypatch.setattr(mjs, "_git_sha", lambda: head_sha)
+    monkeypatch.setattr(mjs, "_build_judge", _stub_build_judge)
+    monkeypatch.setattr(mjs, "_load_golden_qa", _stub_load_golden_qa)
+    monkeypatch.setattr(
+        mjs, "score_query_log",
+        _stub_score_query_log_factory(usage=usage),
+    )
+
+
+def test_amain_writes_spotcheck_json(tmp_path, monkeypatch):
+    """SC-1 + SC-2 + SC-4 — integration: writes JSON with 15 cells, dual-SHA, max_tokens=8192."""
+    import asyncio
+
+    from rich.console import Console
+
+    _setup_amain_inputs(tmp_path)
+    _patch_amain_internals(monkeypatch)
+
+    args = _build_args(tmp_path)
+    rc = asyncio.run(amain(args, Console()))
+    assert rc == 0
+
+    # Locate output JSON
+    metrics_dir = tmp_path / "metrics"
+    matches = sorted(metrics_dir.glob("multi-judge-spotcheck-*.json"))
+    assert len(matches) == 1
+    payload = json.loads(matches[0].read_text())
+
+    assert payload["$schema_version"] == "1.0"
+    assert payload["secondary_judge"]["max_tokens"] == 8192
+    assert payload["secondary_judge"]["model_slug"] == "openrouter/anthropic/claude-haiku-4.5"
+    assert payload["secondary_judge"]["model"] == "anthropic/claude-haiku-4.5"
+    assert payload["source_capture_git_sha"] == "75f6f1b"
+    # Schema check
+    assert len(payload["cells"]) == 15
+    for cell in payload["cells"]:
+        assert set(cell.keys()) >= {"question_id", "tier", "primary", "secondary", "delta"}
+        for block_key in ("primary", "secondary", "delta"):
+            block = cell[block_key]
+            assert "faithfulness" in block
+            assert "answer_relevancy" in block
+            assert "context_precision" in block
+
+
+def test_amain_writes_cost_ledger_to_explicit_dest_dir(tmp_path, monkeypatch):
+    """Pitfall 2 / D-7 — cost JSON lands at tmp_path/costs/, NEVER evaluation/results/costs/."""
+    import asyncio
+
+    from rich.console import Console
+
+    _setup_amain_inputs(tmp_path)
+    _patch_amain_internals(
+        monkeypatch,
+        usage={"input_tokens": 100, "output_tokens": 50, "n_scored": 5},
+    )
+
+    # Snapshot pre-existing production-default cost dir state
+    prod_costs = _REPO_ROOT / "evaluation" / "results" / "costs"
+    pre_existing = (
+        set(prod_costs.glob("multi-judge-spotcheck-*.json"))
+        if prod_costs.exists()
+        else set()
+    )
+
+    args = _build_args(tmp_path)
+    rc = asyncio.run(amain(args, Console()))
+    assert rc == 0
+
+    # Cost JSON in tmp_path
+    cost_dir = tmp_path / "costs"
+    cost_files = sorted(cost_dir.glob("multi-judge-spotcheck-*.json"))
+    assert len(cost_files) == 1, f"Expected 1 cost file in {cost_dir}, got {cost_files}"
+    cost_payload = json.loads(cost_files[0].read_text())
+    # D-13 schema
+    assert "tier" in cost_payload
+    assert "timestamp" in cost_payload
+    assert "queries" in cost_payload
+    assert "totals" in cost_payload
+
+    # Production default UNTOUCHED for new spotcheck files
+    if prod_costs.exists():
+        post = set(prod_costs.glob("multi-judge-spotcheck-*.json"))
+        assert post == pre_existing, (
+            f"Cost ledger leaked into production default: {post - pre_existing}"
+        )
+
+
+def test_amain_aborts_on_missing_id(tmp_path, monkeypatch):
+    """Pitfall 4 — when source log is missing one wanted ID, amain returns non-zero."""
+    import asyncio
+
+    from rich.console import Console
+
+    # Drop multimodal-001 from tier-1 source capture
+    _setup_amain_inputs(tmp_path, missing_qid_for_tier=1)
+    _patch_amain_internals(monkeypatch)
+
+    args = _build_args(tmp_path)
+    rc = asyncio.run(amain(args, Console()))
+    assert rc != 0
+
+    # NO spot-check JSON should be written
+    matches = sorted((tmp_path / "metrics").glob("multi-judge-spotcheck-*.json"))
+    assert matches == []
+
+
+def test_dual_sha_provenance(tmp_path, monkeypatch, capsys):
+    """Pitfall 3 / D-6 — source_capture_git_sha=src, spotcheck_run_git_sha=HEAD; mismatch warns."""
+    import asyncio
+
+    from rich.console import Console
+
+    _setup_amain_inputs(tmp_path, source_git_sha="75f6f1b")
+    _patch_amain_internals(monkeypatch, head_sha="DEADBEEF")
+
+    args = _build_args(tmp_path)
+    console = Console(force_terminal=False)
+    rc = asyncio.run(amain(args, console))
+    assert rc == 0
+
+    metrics_dir = tmp_path / "metrics"
+    matches = sorted(metrics_dir.glob("multi-judge-spotcheck-*.json"))
+    assert len(matches) == 1
+    payload = json.loads(matches[0].read_text())
+
+    assert payload["source_capture_git_sha"] == "75f6f1b"
+    assert payload["spotcheck_run_git_sha"] == "DEADBEEF"
+
+    # Warning must mention sha mismatch (yellow style)
+    out = capsys.readouterr().out
+    assert "75f6f1b" in out
+    assert "DEADBEEF" in out
