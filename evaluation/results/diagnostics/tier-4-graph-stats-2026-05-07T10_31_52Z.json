@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-05-07T10:31:52Z",
+  "git_sha": "ea711eb",
+  "working_dir": "/Users/patrykattc/work/git/rag-architecture-patterns/rag_anything_storage/tier-4-multimodal",
+  "graphml_path": "/Users/patrykattc/work/git/rag-architecture-patterns/rag_anything_storage/tier-4-multimodal/graph_chunk_entity_relation.graphml",
+  "graphml_node_count": 28597,
+  "graphml_edge_count": 80419,
+  "graphml_size_bytes": 52529936,
+  "graphml_mtime": "2026-05-07T05:36:14Z",
+  "kv_full_docs_count": 79,
+  "kv_text_chunks_count": 2354,
+  "kv_full_entities_count": 78,
+  "kv_full_relations_count": 44,
+  "raganything_version": "1.2.10",
+  "lightrag_version": "1.4.15",
+  "mineru_version": "3.1.4"
+}
