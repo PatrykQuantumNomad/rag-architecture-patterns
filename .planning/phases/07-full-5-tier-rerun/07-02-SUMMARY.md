@@ -186,9 +186,19 @@ Runtime state (gitignored):
 
 Not applicable — Plan 07-02 is `type: execute` (not `type: tdd`), and no source code was added or modified. The plan deliberately invokes existing helpers without editing them (Pitfall 3 + forward-contract guard).
 
-## Self-Check
+## Self-Check: PASSED
 
-PENDING (will be appended below after self-check runs)
+Files verified on disk:
+- `evaluation/results/diagnostics/tier-4-graph-stats-2026-05-07T10_31_52Z.json` — full-rebuild manifest (committed)
+- `evaluation/results/diagnostics/tier-4-graph-stats-2026-05-05T11_14_40Z.json` — smoke manifest (preserved)
+- `.planning/phases/07-full-5-tier-rerun/07-02-SUMMARY.md` — this file (committed)
+- `rag_anything_storage/tier-4-multimodal/graph_chunk_entity_relation.graphml` — 52.5 MB graph (gitignored runtime state)
+- `evaluation/results/queries/tier-4-2026-05-07T10_32_47Z.json` — 5q smoke query records
+- `evaluation/results/metrics/tier-4-2026-05-07T10_32_47Z.json` — 5q smoke RAGAS metrics
+
+Commits verified in git log:
+- `eb77cf8` (feat: manifest)
+- `5766dc6` (docs: SUMMARY)
 
 ## Next Phase Readiness
 
