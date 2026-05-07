@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Pipeline Driver** - `evaluation/harness/pipeline.py` runs capture → score → compare → freeze in one command, with single-tier rerun support ✓ 2026-05-06 [2/2 plans delivered; HARN-01 closed end-to-end at unit + integration + live levels (Plan 05-01 + Plan 05-02); HARN-02 closed at unit + integration levels (live-level coverage exceeds cost ceiling for a single test); Plan 05-02 live verdict PASS at total_usd=$0.007010 / 158.02s wall on Tier 5 × 5q against real OpenRouter API]
 - [x] **Phase 6: Embedder Provenance Capture** - Per-tier embedder model name recorded in capture JSON so the embedder-confound disclosure is data-backed ✓ 2026-05-06 [1/1 plan delivered; CAP-03 closed at unit + integration levels via 6 atomic RED→GREEN pairs (12 commits a6c3155..5d13879); QueryLog gains Optional[embedder, embedder_source]; 5 tier modules carry per-tier EMBEDDER_SOURCE constants; run.py + tier-4 eval_capture.py thread fields through both capture entry points (D-CAPTURE-ENTRYPOINTS); compare.py emits per-tier embedder line + dedicated "Embedder by tier" table; freeze.py manifest carries per_tier embedder fields; D-ROADMAP-OVERRIDE locked (Tier 5 records SAME embedder as Tier 1: openai/text-embedding-3-small via openrouter — verified against tier-5-agentic/tools.py:47-50,90-101); forward-contract guard intact (0 bytes diff for score.py / pipeline.py / smoke_gate.py); all 10 LOC budgets honored zero compression iterations; 116→126 offline tests pass]
 - [x] **Phase 7: Full 5-Tier Rerun** - Capture all 5 tiers × 30 questions on one date with one git SHA, NaN counts down to expected residuals ✓ 2026-05-07 [3/3 plans delivered; CAP-01 closed at sweep_sha=75f6f1b on date 2026-05-07; T4 NaN 2/30, T5 NaN 0/30, total sweep $0.439 (vs $3 ceiling); Tier 4 graph rebuilt to 28597 nodes / 80419 edges from 79 papers / $24.79 host run; forward-contract guard intact end-to-end (0 bytes diff vs pre-Phase-7 baseline 03f9ce1 across 6 harness modules); 5/5 ROADMAP success criteria verified (SC-5 human-confirmed via dashboard 2026-05-07)]
-- [ ] **Phase 8: Multi-Judge Spot-Check** - Re-score 5 questions × 3 tiers with a non-Gemini judge, capture delta in structured JSON
+- [x] **Phase 8: Multi-Judge Spot-Check** - Re-score 5 questions × 3 tiers with a non-Gemini judge, capture delta in structured JSON (completed 2026-05-07)
 - [ ] **Phase 9: Frozen Handoff Doc** - Produce `evaluation/results/frozen/eval-numbers-v1.0.md` containing rollup, per-class breakdown, per-tier provenance, multi-judge delta, embedder table, and honest disclaimers
 
 ## Phase Details
@@ -130,7 +130,9 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. User can read that JSON and find, per cell: primary-judge score (Gemini), secondary-judge score, and delta — across faithfulness, answer_relevancy, context_precision
   3. User can confirm the spot-check spend stayed within $0.10–0.30 (cost recorded in `costs/multi-judge-spotcheck-{TS}.json`)
   4. User can confirm the secondary judge's model + version is recorded in the JSON for provenance (no opaque "Claude")
-**Plans**: TBD
+**Plans**: 2 plans (2 waves; 08-01 pure-offline TDD red→green, 08-02 live smoke backstop with cost-ack checkpoint — same Phase 1/2/3/5 offline-first → live-backstop pattern)
+- [x] 08-01-PLAN.md — TDD red→green for `evaluation/harness/multi_judge_spotcheck.py` (≤230 raw LOC; landed at 227) + 12 offline tests (1 Task 0 pre-flight + 11 unit/integration) covering schema / signed-delta / source-SHA pinning via `_read_source_sha` (BLOCKER #3 fix — reads `src_log.git_sha`, NEVER `_git_sha()`) / provenance / cost-ledger dest_dir isolation / 15-cell shape / ID consistency / fallback estimator / forward-contract guard. Closes CAP-02 at unit + integration levels. Forward-contract guard intact (0 bytes diff across `pipeline.py / run.py / score.py / compare.py / freeze.py / smoke_gate.py / records.py / shared/cost_tracker.py / shared/pricing.py`). Spend $0.00. — **COMPLETE 2026-05-07** (~30 min wall; commits 54e62c0 Task 0 pre-flight + 1e9db22 RED + 3baa8a8 GREEN; offline regression 116→128 PASS; LOC budget honored at 227/230 after 5 compression iterations from 365 raw initial draft).
+- [x] 08-02-PLAN.md — Live smoke backstop: 1 `@pytest.mark.live` test driving `multi_judge_spotcheck.main` against the Phase 7 sweep_sha=`75f6f1b` capture + real OpenRouter API (Claude Haiku 4.5 secondary judge). Closes CAP-02 at live level. Non-autonomous (cost-ack checkpoint). Spend ≤ $0.50 HARD ceiling, ~$0.12 projected, $0.10–0.30 ROADMAP envelope.
 
 ### Phase 9: Frozen Handoff Doc
 **Goal**: Produce `evaluation/results/frozen/eval-numbers-v1.0.md` — the single immutable artifact this repo ships to the external blog repo, containing every number, every disclaimer, and every provenance line a hostile re-reader needs.
@@ -159,5 +161,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 5. Pipeline Driver | 2/2 | ✓ Complete | 2026-05-06 |
 | 6. Embedder Provenance Capture | 1/1 | ✓ Verified | 2026-05-06 |
 | 7. Full 5-Tier Rerun | 3/3 | ✓ Verified | 2026-05-07 |
-| 8. Multi-Judge Spot-Check | 0/TBD | Not started | - |
+| 8. Multi-Judge Spot-Check | 2/2 | Complete   | 2026-05-07 |
 | 9. Frozen Handoff Doc | 0/TBD | Not started | - |

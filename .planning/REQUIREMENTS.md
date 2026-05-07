@@ -30,7 +30,7 @@ New code added under `evaluation/harness/` to make capture → score → rollup 
 Eval-running activities — the actual numbers production for the blog.
 
 - [ ] **CAP-01**: User can capture a full 5-tier × 30-question RAGAS run on a single date with a single git SHA recorded in every per-tier output JSON
-- [ ] **CAP-02**: User can run a multi-judge spot-check re-scoring 5 questions × 3 tiers (15 cells) with a non-Gemini judge (Claude Haiku or GPT-4.1-mini), and the resulting delta-from-primary-judge is captured in a structured JSON for the frozen doc
+- [x] **CAP-02**: User can run a multi-judge spot-check re-scoring 5 questions × 3 tiers (15 cells) with a non-Gemini judge (Claude Haiku or GPT-4.1-mini), and the resulting delta-from-primary-judge is captured in a structured JSON for the frozen doc
 - [ ] **CAP-03**: User can verify per-tier embedding model is recorded in capture JSON so the embedder-confound disclosure in the frozen doc is data-backed (not narrative)
 
 ### Handoff Doc
@@ -92,7 +92,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HARN-04 | Phase 4 | Complete (2026-05-05; Plan 04-01 commits 9588056 RED + 7881e87 GREEN; sidecar manifest with $schema_version + git_sha + git_dirty + frozen_at + per-tier provenance + library_versions for 4 critical libs verified by test_manifest_top_level_fields + test_manifest_per_tier_provenance + test_manifest_library_versions + test_manifest_judge_block + test_manifest_missing_tier + CLI gate 5) |
 | HARN-05 | Phase 3 | Complete (2026-05-05; end-to-end delivery: Plan 03-01 NaNReasonTracer + _classify_post_evaluate_nan units via TDD red→green commits e97e864 + bc80825; Plan 03-02 wiring into score_query_log via callbacks=[tracer] + per-metric precedence chain in commit fe52528; Plan 03-03 live smoke backstop test_eval_smoke_nan_reasons asserting n_unknown_nan==0 against real Gemini 2.5 Flash output, verdict PASS in commit 512ad54) |
 | CAP-01 | Phase 7 | Pending |
-| CAP-02 | Phase 8 | Pending |
+| CAP-02 | Phase 8 | Complete |
 | CAP-03 | Phase 6 | Pending |
 | DOC-01 | Phase 9 | Pending |
 | DOC-02 | Phase 9 | Pending |
