@@ -145,7 +145,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. User can find honest disclaimers covering: small-N (n=30 magnitudes-only), self-grading bias with measured multi-judge delta from Phase 8, multimodal-tier-1-3-text-only de-emphasis, embedder-confound table from Phase 6, and any residual NaN reasons from Phase 3
   5. User can copy-paste the entire frozen doc into the blog repo's `rag-architecture-patterns.mdx` and have all numbers and disclosures travel together — no external lookups required
   6. User can confirm `eval-numbers-v1.0.manifest.json` sits beside the markdown and the freeze command refuses to clobber if re-run
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — Inline Phase 8 delta + finalize comparison.md disclaimers
+- [ ] 09-02-PLAN.md — Freeze v1.0 markdown + manifest + immutability checks
 
 ## Progress
 
