@@ -1,0 +1,96 @@
+{
+  "$schema_version": "1.0",
+  "version": "1.0",
+  "frozen_at": "2026-05-08T15:05:35Z",
+  "git_sha": "cd032f7",
+  "git_dirty": true,
+  "source_markdown": "comparison.md",
+  "source_markdown_mtime": "2026-05-08T14:34:49Z",
+  "frozen_markdown": "frozen/eval-numbers-v1.0.md",
+  "judge": {
+    "model": "google/gemini-2.5-flash",
+    "embedder": "openai/text-embedding-3-small",
+    "max_tokens": 8192
+  },
+  "per_tier": {
+    "tier-1": {
+      "status": "present",
+      "generation_model": "google/gemini-2.5-flash",
+      "embedder": "openai/text-embedding-3-small",
+      "embedder_source": "openrouter",
+      "capture_timestamp": "2026-05-07T10:59:10Z",
+      "capture_git_sha": "75f6f1b",
+      "queries_path": "queries/tier-1-2026-05-07T10_59_10Z.json",
+      "queries_mtime": "2026-05-07T11:00:34Z",
+      "cost_path": "costs/tier-1-eval-20260507T164924Z.json",
+      "cost_mtime": "2026-05-07T16:49:24Z",
+      "metrics_path": "metrics/tier-1-2026-05-07T10_59_10Z.json",
+      "metrics_mtime": "2026-05-07T11:19:06Z"
+    },
+    "tier-2": {
+      "status": "present",
+      "generation_model": "gemini-2.5-flash",
+      "embedder": "gemini-embedding-001",
+      "embedder_source": "google-managed",
+      "capture_timestamp": "2026-05-07T10:59:10Z",
+      "capture_git_sha": "75f6f1b",
+      "queries_path": "queries/tier-2-2026-05-07T10_59_10Z.json",
+      "queries_mtime": "2026-05-07T11:03:47Z",
+      "cost_path": "costs/tier-2-eval-20260507T164924Z.json",
+      "cost_mtime": "2026-05-07T16:49:24Z",
+      "metrics_path": "metrics/tier-2-2026-05-07T10_59_10Z.json",
+      "metrics_mtime": "2026-05-07T11:31:56Z"
+    },
+    "tier-3": {
+      "status": "present",
+      "generation_model": "google/gemini-2.5-flash",
+      "embedder": "openai/text-embedding-3-small",
+      "embedder_source": "openrouter",
+      "capture_timestamp": "2026-05-07T10:59:10Z",
+      "capture_git_sha": "75f6f1b",
+      "queries_path": "queries/tier-3-2026-05-07T10_59_10Z.json",
+      "queries_mtime": "2026-05-07T11:04:31Z",
+      "cost_path": "costs/tier-3-eval-20260507T164924Z.json",
+      "cost_mtime": "2026-05-07T16:49:24Z",
+      "metrics_path": "metrics/tier-3-2026-05-07T10_59_10Z.json",
+      "metrics_mtime": "2026-05-07T11:41:51Z"
+    },
+    "tier-4": {
+      "status": "present",
+      "generation_model": "google/gemini-2.5-flash",
+      "embedder": "openai/text-embedding-3-small",
+      "embedder_source": "openrouter",
+      "capture_timestamp": "2026-05-07T10:59:10Z",
+      "capture_git_sha": "75f6f1b",
+      "queries_path": "queries/tier-4-2026-05-07T10_59_10Z.json",
+      "queries_mtime": "2026-05-07T11:04:31Z",
+      "cost_path": "costs/tier-4-eval-20260507T164924Z.json",
+      "cost_mtime": "2026-05-07T16:49:24Z",
+      "metrics_path": "metrics/tier-4-2026-05-07T10_59_10Z.json",
+      "metrics_mtime": "2026-05-07T11:51:18Z"
+    },
+    "tier-5": {
+      "status": "present",
+      "generation_model": "openrouter/google/gemini-2.5-flash",
+      "embedder": "openai/text-embedding-3-small",
+      "embedder_source": "openrouter",
+      "capture_timestamp": "2026-05-07T10:59:10Z",
+      "capture_git_sha": "75f6f1b",
+      "queries_path": "queries/tier-5-2026-05-07T10_59_10Z.json",
+      "queries_mtime": "2026-05-07T11:09:06Z",
+      "cost_path": "costs/tier-5-eval-20260507T164924Z.json",
+      "cost_mtime": "2026-05-07T16:49:24Z",
+      "metrics_path": "metrics/tier-5-2026-05-07T10_59_10Z.json",
+      "metrics_mtime": "2026-05-07T12:02:53Z"
+    }
+  },
+  "library_versions": {
+    "lightrag-hku": "1.4.15",
+    "raganything": "1.2.10",
+    "openai-agents": "0.14.6",
+    "ragas": "0.4.3",
+    "litellm": "1.83.0",
+    "chromadb": "1.5.8"
+  },
+  "python_version": "3.13.1"
+}
