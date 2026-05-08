@@ -148,7 +148,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 2 plans
 
 Plans:
+**Wave 1**
 - [ ] 09-01-PLAN.md — Inline Phase 8 delta + finalize comparison.md disclaimers
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 09-02-PLAN.md — Freeze v1.0 markdown + manifest + immutability checks
 
 ## Progress

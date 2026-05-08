@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
+status: executing
 stopped_at: "Phase 8 Plan 08-02 COMPLETE 2026-05-07. CAP-02 closed end-to-end at unit + integration + live levels. Live test test_live_spotcheck_under_budget PASSED rc=0; total_usd=$0.12225 (clean PASS, well within $0.30 SOFT envelope; 40.75% used); 15 cells with dual-SHA provenance source_capture_git_sha=75f6f1b NOT current HEAD 3f37e4b verified at LIVE level (BLOCKER #3 fix end-to-end). 6m1s wall. 0/15 secondary nan_reasons (Claude Haiku 4.5 produced clean scores throughout). Forward-contract guard intact end-to-end (0 bytes diff across 9 RAW-LOCKed files; second Phase 8 pass). multi_judge_spotcheck.py untouched (still at Plan 08-01 GREEN 3baa8a8). Offline regression baseline preserved exactly at 128 PASS / 6 deselected. Phase 8 complete and eligible for /gsd-verify-phase 8 against ROADMAP SC-1 through SC-4 (all CLEAN, no deviations). Phase 9 (frozen doc) unblocked. Phase 9 freeze prerequisite reminder still in force: DO NOT rebuild Tier 4 between this point and Phase 9 freeze."
-last_updated: "2026-05-07T16:46:01.385Z"
-last_activity: 2026-05-07
+last_updated: "2026-05-08T13:35:13.185Z"
+last_activity: 2026-05-08 -- Phase 9 planning complete
 progress:
   total_phases: 9
   completed_phases: 8
-  total_plans: 19
+  total_plans: 21
   completed_plans: 19
-  percent: 100
+  percent: 90
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 
 Phase: 8 of 9 (Multi-Judge Spot-Check) — IN PROGRESS (1/2 plans complete). Plan 08-01 (TDD red→green for evaluation/harness/multi_judge_spotcheck.py) closed CAP-02 at unit + integration levels: 227 raw LOC module ≤230 budget, 12 offline tests (1 Task 0 pre-flight + 11 unit/integration), 6 public helpers (_signed_delta, _filter_records, _read_primary_metrics, _read_source_sha, _estimate_cost_fallback, amain). BLOCKER #3 fix verified: _read_source_sha reads src_log.git_sha from source QueryLog (NEVER calls _git_sha which returns current HEAD). Forward-contract guard intact (0 bytes diff across 9 RAW-LOCKed files). Offline regression 116→128 PASS (+12 new tests).
 Plan: 2 of 2 complete in Phase 8. Plan 08-01 (TDD red→green for multi_judge_spotcheck.py) — wall ~30 min orchestrator (Task 0 pre-flight ~3 min + Task 1 RED ~10 min + Task 2 GREEN ~17 min including 5 LOC-budget compression iterations from 365 raw initial draft → 227 final). 3 atomic commits: 54e62c0 Task 0 pre-flight + 1e9db22 RED + 3baa8a8 GREEN. ZERO touches to RAW-LOCKed source files (forward-contract guard returns 0 bytes diff at every commit). 2 Rule-1 deviations rolled into GREEN commit: (a) collapsed PEP 8 2-blank-line separators to single blank lines between top-level defs to fit 230 LOC budget (mirroring Plan 04-01's 95-LOC-budget approach; no semantic change); (b) _summarise loop uses zip(_METRICS, vals) instead of separate loops (saves 2 lines; no behavioural change). Total Plan 08-01 spend $0.00 (pure-offline TDD).
-Status: Phase complete — ready for verification
-Last activity: 2026-05-07
+Status: Ready to execute
+Last activity: 2026-05-08 -- Phase 9 planning complete
 
 Progress: [██████████] 100%
 Phase 8 progress: 1/2 plans complete. Plan 08-01: 3 commits (Task 0 pre-flight + RED + GREEN); 227 LOC multi_judge_spotcheck.py at 1.3% headroom under 230-LOC budget; 12 offline tests added; CAP-02 closed at unit + integration levels; offline regression 116→128 PASS; forward-contract guard intact end-to-end (0 bytes diff across 9 RAW-LOCKed files at every commit). Plan 08-02: not yet started.
