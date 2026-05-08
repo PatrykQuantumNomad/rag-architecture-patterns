@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 6: Embedder Provenance Capture** - Per-tier embedder model name recorded in capture JSON so the embedder-confound disclosure is data-backed ✓ 2026-05-06 [1/1 plan delivered; CAP-03 closed at unit + integration levels via 6 atomic RED→GREEN pairs (12 commits a6c3155..5d13879); QueryLog gains Optional[embedder, embedder_source]; 5 tier modules carry per-tier EMBEDDER_SOURCE constants; run.py + tier-4 eval_capture.py thread fields through both capture entry points (D-CAPTURE-ENTRYPOINTS); compare.py emits per-tier embedder line + dedicated "Embedder by tier" table; freeze.py manifest carries per_tier embedder fields; D-ROADMAP-OVERRIDE locked (Tier 5 records SAME embedder as Tier 1: openai/text-embedding-3-small via openrouter — verified against tier-5-agentic/tools.py:47-50,90-101); forward-contract guard intact (0 bytes diff for score.py / pipeline.py / smoke_gate.py); all 10 LOC budgets honored zero compression iterations; 116→126 offline tests pass]
 - [x] **Phase 7: Full 5-Tier Rerun** - Capture all 5 tiers × 30 questions on one date with one git SHA, NaN counts down to expected residuals ✓ 2026-05-07 [3/3 plans delivered; CAP-01 closed at sweep_sha=75f6f1b on date 2026-05-07; T4 NaN 2/30, T5 NaN 0/30, total sweep $0.439 (vs $3 ceiling); Tier 4 graph rebuilt to 28597 nodes / 80419 edges from 79 papers / $24.79 host run; forward-contract guard intact end-to-end (0 bytes diff vs pre-Phase-7 baseline 03f9ce1 across 6 harness modules); 5/5 ROADMAP success criteria verified (SC-5 human-confirmed via dashboard 2026-05-07)]
 - [x] **Phase 8: Multi-Judge Spot-Check** - Re-score 5 questions × 3 tiers with a non-Gemini judge, capture delta in structured JSON ✓ 2026-05-07 [2/2 plans delivered; CAP-02 closed end-to-end at unit + integration + live levels; gsd-verifier verdict passed 4/4 SCs; live test verdict CLEAN PASS at total_usd=$0.12225 (40.75% of $0.30 SOFT envelope, 24.45% of $0.50 HARD ceiling); 15 cells produced (5 IDs × 3 tiers), 0/15 secondary nan_reasons; dual-SHA provenance verified at LIVE level (source_capture_git_sha=75f6f1b ≠ HEAD 3f37e4b); secondary judge anthropic/claude-haiku-4.5 max_tokens=8192; per-tier mean Δ-faithfulness preview for Phase 9 frozen-doc family-bias disclosure: tier-1 -0.035, tier-4 +0.010, tier-5 -0.164, overall -0.063; forward-contract guard intact end-to-end (0 bytes diff across 9 RAW-LOCKed harness modules — second pass in Phase 8); offline regression 116→128 PASS]
-- [ ] **Phase 9: Frozen Handoff Doc** - Produce `evaluation/results/frozen/eval-numbers-v1.0.md` containing rollup, per-class breakdown, per-tier provenance, multi-judge delta, embedder table, and honest disclaimers
+- [x] **Phase 9: Frozen Handoff Doc** - Produce `evaluation/results/frozen/eval-numbers-v1.0.md` containing rollup, per-class breakdown, per-tier provenance, multi-judge delta, embedder table, and honest disclaimers (completed 2026-05-08)
 
 ## Phase Details
 
@@ -152,7 +152,7 @@ Plans:
 - [x] 09-01-PLAN.md — Inline Phase 8 delta + finalize comparison.md disclaimers
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 09-02-PLAN.md — Freeze v1.0 markdown + manifest + immutability checks
+- [x] 09-02-PLAN.md — Freeze v1.0 markdown + manifest + immutability checks
 
 ## Progress
 
@@ -169,4 +169,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Embedder Provenance Capture | 1/1 | ✓ Verified | 2026-05-06 |
 | 7. Full 5-Tier Rerun | 3/3 | ✓ Verified | 2026-05-07 |
 | 8. Multi-Judge Spot-Check | 2/2 | ✓ Verified | 2026-05-07 |
-| 9. Frozen Handoff Doc | 1/2 | In Progress|  |
+| 9. Frozen Handoff Doc | 2/2 | Complete    | 2026-05-08 |
