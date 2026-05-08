@@ -70,9 +70,15 @@ completed: 2026-05-08
 - **Verification:** Plan’s automated content checks passed; re-run without `--force` refused to clobber.
 - **Committed in:** `58f71ce` (task commit)
 
+**2. [Rule 3 - Warning] Re-freeze required a clean working tree for reproducible manifest**
+- **Found during:** Post-plan review (phase execution wrap-up)
+- **Issue:** Initial v1.0 manifest recorded `git_dirty: true` because the repo contained unrelated local changes at freeze time, weakening auditability (cannot reconstruct from `git_sha` alone).
+- **Fix:** Temporarily stashed unrelated changes, re-ran freeze with `--force` from a clean working tree, and committed the updated manifest (now `git_dirty: false`).
+- **Committed in:** `55fb81f`
+
 ---
 
-**Total deviations:** 1 auto-fixed (Rule 3)
+**Total deviations:** 2 auto-fixed (Rule 3)
 **Impact on plan:** Required to complete the freeze without changing evaluation outputs or re-running expensive work.
 
 ## Issues Encountered

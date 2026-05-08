@@ -21,9 +21,9 @@ tech-stack:
 
 key-files:
   created:
-    - "evaluation/results/comparison.md"
     - ".planning/phases/09-frozen-handoff-doc/09-01-SUMMARY.md"
-  modified: []
+  modified:
+    - "evaluation/results/comparison.md"
 
 key-decisions:
   - "Inline Phase 8 spot-check deltas and dual-SHA provenance directly into comparison.md rather than linking to tmp_path JSON artifacts."
