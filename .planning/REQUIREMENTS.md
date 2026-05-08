@@ -40,8 +40,8 @@ The single artifact that ships from this repo to the blog repo.
 - [ ] **DOC-01**: User can produce `evaluation/results/frozen/eval-numbers-v1.0.md` containing the full per-tier rollup table (faithfulness, answer_relevancy, context_precision, mean_latency_s, total_cost_usd, cost_per_query_usd, n, n_nan)
 - [ ] **DOC-02**: User can find a per-question-class breakdown (single-hop / multi-hop / multimodal) in the frozen doc, matching `comparison.md` format
 - [ ] **DOC-03**: User can find a per-tier provenance line in the frozen doc with capture timestamp, generation model, git SHA, and judge model — sufficient for any reader to reproduce
-- [ ] **DOC-04**: User can find honest disclaimers in the frozen doc covering: sample-size limits (30 × 5 too small for stat-sig), self-grading bias (with multi-judge spot-check delta as evidence), multimodal limitation per tier, embedder-confound table, and any RAGAS NaN reasons that remain in the final numbers
-- [ ] **DOC-05**: User can copy-paste the frozen doc into the blog repo's `rag-architecture-patterns.mdx` and have all numbers and disclosures travel together (no external lookups required)
+- [x] **DOC-04**: User can find honest disclaimers in the frozen doc covering: sample-size limits (30 × 5 too small for stat-sig), self-grading bias (with multi-judge spot-check delta as evidence), multimodal limitation per tier, embedder-confound table, and any RAGAS NaN reasons that remain in the final numbers
+- [x] **DOC-05**: User can copy-paste the frozen doc into the blog repo's `rag-architecture-patterns.mdx` and have all numbers and disclosures travel together (no external lookups required)
 
 ## v1.1 Requirements
 
@@ -97,8 +97,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DOC-01 | Phase 9 | Pending |
 | DOC-02 | Phase 9 | Pending |
 | DOC-03 | Phase 9 | Pending |
-| DOC-04 | Phase 9 | Pending |
-| DOC-05 | Phase 9 | Pending |
+| DOC-04 | Phase 9 | Complete |
+| DOC-05 | Phase 9 | Complete |
 
 **Coverage:**
 - v1.0 requirements: 16 total

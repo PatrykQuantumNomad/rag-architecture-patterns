@@ -149,7 +149,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 **Wave 1**
-- [ ] 09-01-PLAN.md — Inline Phase 8 delta + finalize comparison.md disclaimers
+- [x] 09-01-PLAN.md — Inline Phase 8 delta + finalize comparison.md disclaimers
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 09-02-PLAN.md — Freeze v1.0 markdown + manifest + immutability checks
@@ -169,4 +169,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Embedder Provenance Capture | 1/1 | ✓ Verified | 2026-05-06 |
 | 7. Full 5-Tier Rerun | 3/3 | ✓ Verified | 2026-05-07 |
 | 8. Multi-Judge Spot-Check | 2/2 | ✓ Verified | 2026-05-07 |
-| 9. Frozen Handoff Doc | 0/TBD | Not started | - |
+| 9. Frozen Handoff Doc | 1/2 | In Progress|  |
