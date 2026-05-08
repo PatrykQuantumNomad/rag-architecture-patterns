@@ -754,27 +754,27 @@ def _captured_versions() -> dict[str, str]:
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the smoke gate fail-fast or score-then-classify?**
    - What we know: `score.py` already short-circuits empty contexts to `nan_reason='empty_contexts'` BEFORE calling the judge LLM (`score.py:_short_circuit_nan` at line 136-152), so running score.py on the smoke 5 is cheap (~$0.015 worst case). CONTEXT.md says "score.py runs against the smoke 5 as part of the gate."
    - What's unclear: Should the gate evaluator invoke `score.amain()` directly (subprocess), or `score.score_query_log()` in-process? The latter is the existing pattern (used by `test_eval_smoke_live.py:120-127`).
-   - Recommendation: In-process. Subprocess adds 2-3 seconds of import boot per call and complicates exit-code handling. Match the live-smoke-test pattern.
+   - RESOLVED: In-process. Subprocess adds 2-3 seconds of import boot per call and complicates exit-code handling. Match the live-smoke-test pattern.
 
 2. **Should the fallback log include the agent's `final_output` (the answer text) for each smoke question?**
    - What we know: CONTEXT.md requires recording git SHA, timestamp, library versions, model slug, mutation tried, smoke result, span observations.
    - What's unclear: The answer text would let a reviewer judge "agent self-cited from training" vs. "agent called tools but tools returned junk" without re-running. But it's also long (~200-500 chars per question × 5 questions = 1-3 KB) and may contain hallucinated paper IDs.
-   - Recommendation: Include `final_output` truncated to 400 chars per the existing tier-5 e2e live test convention (`tier-5-agentic/tests/test_tier5_e2e_live.py:121`). Truncation is the precedent.
+   - RESOLVED: Include `final_output` truncated to 400 chars per the existing tier-5 e2e live test convention (`tier-5-agentic/tests/test_tier5_e2e_live.py:121`). Truncation is the precedent.
 
 3. **Tie-breaking when the same `(paper_id, page)` appears with different similarity scores across iterations.**
    - What we know: CONTEXT.md says "probably first occurrence; not consequential for RAGAS." The proposed `seen: set[tuple]` does first-write-wins.
    - What's unclear: If iteration 1 returns chunk X with similarity 0.6 and iteration 3 returns the same chunk X with similarity 0.9, do we want the higher-confidence variant?
-   - Recommendation: First-occurrence as locked. RAGAS `context_precision` doesn't read similarity; the score is irrelevant once the chunk is in the list. Don't introduce score-based tie-breaking.
+   - RESOLVED: First-occurrence as locked. RAGAS `context_precision` doesn't read similarity; the score is irrelevant once the chunk is in the list. Don't introduce score-based tie-breaking.
 
 4. **Should the `[paper_id=<id>]` provenance prefix be included for the abstract entries from `lookup_paper_metadata`?**
    - What we know: CONTEXT.md says "Format: `[paper_id=<id>] <text>` where text is the chunk text (for `search_text_chunks`) or the abstract field (for `lookup_paper_metadata`)."
    - What's unclear: Nothing — CONTEXT.md is explicit. Recorded here so the planner doesn't get confused by mixed examples elsewhere.
-   - Recommendation: Always prefix, both tools.
+   - RESOLVED: Always prefix, both tools.
 
 ---
 

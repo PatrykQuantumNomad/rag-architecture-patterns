@@ -388,23 +388,32 @@ If the plan is going to set a `max_lines` hard cap (Plan 04-01 used 95), Phase 5
 
 If pipeline.py grows above 280 raw LOC, the planner should consider whether a helper module (e.g. `evaluation/harness/_pipeline_args.py` with the three `_build_*_args` builders) is justified. For v1.0 single-file is preferable.
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All four open questions surfaced during research were resolved during
+`/gsd-discuss-phase` and locked into the plan frontmatter as decisions
+D-Q1 / D-Q2 / D-Q3 / D-Q4 (see `05-01-PLAN.md` `locked_decisions:` block).
+Per-question resolution is restated inline below for traceability.
 
 1. **Should pipeline.py expose `--force` for freeze?**
    - What we know: freeze.py has `--force` to overwrite an existing frozen artifact.
    - What's unclear: from the user's POV during a full sweep, having pipeline silently overwrite a frozen v1.0 doc is dangerous. Users who *want* to overwrite should run freeze.py directly.
    - Recommendation: do **not** expose `--force` in pipeline.py for v1.0. Refuse-clobber is the safer default; user invokes `python -m evaluation.harness.freeze --force ...` explicitly when they really mean it.
+   - **RESOLVED (D-Q3):** Do NOT expose `--force` on pipeline.py. User invokes `python -m evaluation.harness.freeze --force` directly when they really mean overwrite. Safer default; locked in `05-01-PLAN.md` frontmatter.
 
 2. **Should pipeline.py auto-bump freeze version on `FileExistsError`?**
    - Recommendation: NO. Auto-versioning hides the user's intent. Print the freeze module's refusal message verbatim and exit 2.
+   - **RESOLVED (D-Q2 — and reinforced by D-Q3):** NO. Auto-bump deferred indefinitely (no v1.1 plans either). Pipeline catches `(FileExistsError, FileNotFoundError, RuntimeError)` from `freeze.freeze()`, prints the red `Freeze refused: ...` message, and exits 2 — user re-runs `freeze --force` separately or bumps version explicitly. Locked in `05-01-PLAN.md` Task 2 step (i).
 
 3. **Does pipeline.py need its own `--output-dir` separate from `--results-dir`?**
    - run.py uses `--output-dir` (default `evaluation/results`); compare.py / freeze.py use `--results-dir` (default `evaluation/results`). They're synonyms in the codebase but spelled differently.
    - Recommendation: pipeline.py uses `--results-dir` (matches the newer compare.py / freeze.py convention); the synthesized `run_args.output_dir` and `score_args.output_dir` both get set to `args.results_dir`.
+   - **RESOLVED (Claude's discretion, locked into argparse surface):** pipeline.py uses `--results-dir` (matches the newer compare.py / freeze.py convention). The synthesized `run_args.output_dir` and `score_args.output_dir` both get set from `args.results_dir`. Locked in `05-01-PLAN.md` Task 2 build_parser flag list (`--results-dir` default `evaluation/results`).
 
 4. **Is there a way for pipeline.py to record a top-level "pipeline run manifest"?**
    - I.e. a file `evaluation/results/pipeline-runs/{sweep_ts}.json` recording {tiers, n_q, sweep_sha, sweep_ts, exit_code_per_stage, freeze_version}.
    - Out of scope for v1.0 per ROADMAP. **Defer to v1.1.**
+   - **RESOLVED (D-Q4 / scope-bound deferral):** Out of scope for v1.0; deferred to v1.1. Phase 5 records the sweep SHA + timestamp only via the per-tier output JSONs (HARN-01) — no separate top-level manifest. Locked by absence from `05-01-PLAN.md` artifact list.
 
 ## Environment Availability
 

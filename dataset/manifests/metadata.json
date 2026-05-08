@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "phase": "127-repository-skeleton-enterprise-dataset",
-  "generated_at": "2026-04-25T19:28:25Z",
+  "generated_at": "2026-04-26T11:25:57Z",
   "manifests": {
     "papers": "manifests/papers.json",
     "figures": "manifests/figures.json",

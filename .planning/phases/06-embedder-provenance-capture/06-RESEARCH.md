@@ -497,22 +497,25 @@ for prov in capture_provenance:
     lines.append(f"  - embedder: `{emb}` (source: `{src}`)")
 ```
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should Phase 6 add the embedder-disclosure table to comparison.md, or leave it to Phase 9 (Frozen Handoff Doc)?**
    - **What we know**: compare.py already emits the per-tier provenance footer (line 256-266). Adding a small embedder table there is +5-8 LOC.
    - **What's unclear**: Phase 9 owns the frozen v1.0 doc; the embedder confound disclosure is one of Phase 9's success criteria (DOC-04). If compare.py emits the table, Phase 9 lifts it from comparison.md verbatim. If not, Phase 9 must build it from the manifest sidecar.
    - **Recommendation**: emit the table in compare.py during Phase 6 (Task 5 of the plan). It's +8 LOC and makes Phase 9 a pure copy-paste. The frozen-doc author (or freeze.py) reads `comparison.md` and copies the table.
+   - **RESOLVED:** emit the embedder-by-tier table in compare.py during Phase 6 Task 5 (+~10 LOC); Phase 9 becomes a pure copy-paste from comparison.md (locked in PLAN.md as D-Q1).
 
 2. **Should `tier-2-managed` get the `EMBED_MODEL` constant in `main.py` or in a new `embed.py`?**
    - **What we know**: Tier 2's main.py already has the hardcoded string at line 191. Tier 1's pattern is `tier-1-naive/embed_openai.py` (separate embed module).
    - **What's unclear**: Symmetry argues for a new `tier-2-managed/embed.py`; minimal-change argues for adding the constant to `tier-2-managed/main.py`.
    - **Recommendation**: add to `tier-2-managed/main.py` (sibling to existing `INDEX_USD_PER_1M_TOKENS` constant at line 91). Tier 2 has no separate embed call — Google File Search is managed — so a separate `embed.py` would be empty boilerplate. Two new lines in main.py is the smallest honest change.
+   - **RESOLVED:** add `EMBED_MODEL` + `EMBEDDER_SOURCE` to `tier-2-managed/main.py` as siblings of `INDEX_USD_PER_1M_TOKENS` (line 91); no new `embed.py` module created (locked in PLAN.md as D-Q2).
 
 3. **Should the schema use `embedder` or `embedder_model` as the field name?**
    - **What we know**: `model` is the LLM identifier; `embedder` is the embedding model. Both are "models" but they live in different layers.
    - **What's unclear**: Symmetry argues for `embedder_model`; brevity argues for `embedder`.
    - **Recommendation**: `embedder` (single word). Matches the project's naming convention in `score.py` (`judge_emb` not `judge_embedder_model`) and `freeze.py` (`"embedder": judge_emb` in the manifest at line 72). The existing project uses `embedder` for the embedding model identifier; mirror that.
+   - **RESOLVED:** Pydantic field name is `embedder` (single word), mirroring `judge_emb` / `freeze.py` manifest convention; `embedder_model` rejected (locked in PLAN.md as D-Q3).
 
 ## Sources
 
