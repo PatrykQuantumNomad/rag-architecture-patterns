@@ -4,21 +4,32 @@ Indexing the RAG literature itself to compare 5 RAG architectures.
 
 ## Blog Post
 
-This repo is the companion to the blog post **[RAG Architecture Patterns: A 5-Tier Evaluation](https://patrykgolabek.dev/blog/rag-architecture-patterns)** (coming soon).
+This repo is the companion to the blog post **[RAG Architecture Patterns: A 5-Tier Evaluation](https://patrykgolabek.dev/blog/rag-architecture-patterns)**.
 
-The post walks through the design, tradeoffs, and measured cost/quality of each tier against a single shared corpus — the meta-recursive twist being that the corpus IS the RAG literature. Every architecture indexes the papers that taught us how to build it.
+The post walks through the design, tradeoffs, and measured cost/quality/latency of each tier against a single shared corpus — the meta-recursive twist being that the corpus IS the RAG literature. Every architecture indexes the papers that taught us how to build it.
+
+The frozen evidence artifact for the blog is [`evaluation/results/frozen/eval-numbers-v1.0.md`](./evaluation/results/frozen/eval-numbers-v1.0.md) (+ sidecar `eval-numbers-v1.0.manifest.json` pinning git SHA, judge model, generation model, and per-tier embedder). v1.0 shipped 2026-05-08.
 
 ## Architecture Tiers
 
 | Tier | Name | One-line description |
 |------|------|----------------------|
-| 1 | Naive RAG (ChromaDB) | Embed-and-retrieve baseline using `chromadb` + `google-genai`. Cheapest, most code, hardest to tune. |
-| 2 | Managed File Search (Gemini) | Vendor-managed retrieval via Gemini File Search. Zero retrieval code, opaque index. |
-| 3 | Graph RAG (LightRAG) | Knowledge-graph RAG with entity/relationship extraction; multi-hop queries become graph walks. |
-| 4 | Multimodal RAG (RAG-Anything) | Heterogeneous corpus: PDFs + extracted figures (+ video transcripts when available) in one pipeline. |
-| 5 | Agentic RAG (OpenAI Agents) | Agents SDK orchestrating `FileSearchTool` + `@function_tool` over the same shared corpus. |
+| 1 | Naive RAG (ChromaDB) | Embed-and-retrieve baseline. ChromaDB + `openai/text-embedding-3-small` routed via OpenRouter. Cheapest, most code, hardest to tune. |
+| 2 | Managed File Search (Gemini) | Vendor-managed retrieval via Gemini File Search. Zero retrieval code, opaque index, Google-managed embedder. |
+| 3 | Graph RAG (LightRAG) | Knowledge-graph RAG with entity/relationship extraction; multi-hop queries become graph walks. OpenRouter for LLM + embedder. |
+| 4 | Multimodal RAG (RAG-Anything) | PDFs + extracted figures in one pipeline. Built on RAG-Anything + MineRU; v1.0 graph: 28,597 nodes / 80,419 edges over 79 papers. |
+| 5 | Agentic RAG (OpenAI Agents) | Agents SDK orchestrating `FileSearchTool` + `@function_tool` over the same corpus. Routed via LiteLLM → OpenRouter. |
 
-Each tier lives in its own `tier-{N}-{name}/` directory with an isolated `requirements.txt`. The shared utilities and dataset are common to all five. Phases 128-130 implement these tiers; this phase (127) ships the corpus and shared scaffolding.
+Each tier lives in its own `tier-{N}-{name}/` directory with an isolated `requirements.txt`. The shared utilities and dataset are common to all five.
+
+### Folder naming: hyphenated dir + underscore shim
+
+You'll see two directories per tier — for example `tier-1-naive/` and `tier_1_naive/`. **They are not duplicates.**
+
+- **`tier-N-name/` (hyphen)** is the source of truth — all real code lives here. Hyphens are used for human readability in docs, blog URLs, and planning artifacts.
+- **`tier_N_name/` (underscore)** is a tiny `importlib`-based shim package (declared in `pyproject.toml`). Python module names cannot contain hyphens, so the underscore form is what tests and CLIs actually `import`. The shim re-exports each hyphenated sibling module under the dotted path callers expect (e.g. `from tier_1_naive.main import main`). See any of the underscore `__init__.py` files for the mechanics — every one is the same pattern.
+
+Consolidating these into a single layout is tracked as `CLEANUP-01` in the v1.1 backlog (see `.planning/PROJECT.md`), deferred until a clear seam emerges.
 
 ## Dataset
 
@@ -26,15 +37,15 @@ A curated citation cluster anchored on the RAG literature itself (meta-recursive
 
 - **100 arXiv papers** (PDFs) covering retrieval-augmented generation, dense retrieval, graph-augmented retrieval, multimodal RAG, and adjacent literature
 - **581 pre-extracted figures** (PNG, ≥200x200 px) for multimodal indexing in Tier 4 — 8 figures carry verbatim captions extracted from source PDFs
-- **0 video clips** — the video-clip portion was deferred (sandbox could not verify a CC license against the candidate slideslive.com source). See [`.planning/phases/127-repository-skeleton-enterprise-dataset/127-05-SUMMARY.md`](https://github.com/PatrykQuantumNomad/PatrykQuantumNomad/blob/main/.planning/phases/127-repository-skeleton-enterprise-dataset/127-05-SUMMARY.md) in the planning repo. Tier 4's video extension stays a post-Phase-127 enhancement.
+- **0 video clips** — the video-clip portion was deferred (no CC-licensed source could be verified). Tier 4's video extension stays a post-v1.0 enhancement.
 - **Total**: 290.0 MB stored via [git-lfs](https://git-lfs.com)
-- **Evaluation**: 30 hand-authored golden Q&A in [`evaluation/golden_qa.json`](./evaluation/golden_qa.json) — 10 single-hop / 10 multi-hop citation-chain / 10 multimodal (the 3 video slots from the locked D-04 split were substituted with multimodal extras to compensate for the video deferral; see the evaluation README)
+- **Evaluation**: 30 hand-authored golden Q&A in [`evaluation/golden_qa.json`](./evaluation/golden_qa.json) — 10 single-hop / 10 multi-hop citation-chain / 10 multimodal (the 3 video slots from the original split were substituted with multimodal extras to compensate for the video deferral; see the evaluation README)
 
 ```
 dataset/
 ├── papers/      # 100 PDFs (LFS)
 ├── images/      # 581 extracted figures (LFS)
-├── videos/      # empty — Plan 05 deferred
+├── videos/      # empty — deferred
 └── manifests/
     ├── papers.json     # 100 entries with arxiv_id, title, year, abstract
     ├── figures.json    # 581 entries with figure_id, paper_id, bbox, caption
@@ -47,21 +58,29 @@ Provenance and per-asset licensing in [`dataset/README.md`](./dataset/README.md)
 
 ```
 .
-├── dataset/             # Corpus (LFS): papers, figures, manifests
-├── evaluation/          # Golden Q&A + per-tier results landing zone
-│   ├── golden_qa.json   # 30 hand-authored evaluation questions
-│   └── results/         # Per-run cost JSON written by CostTracker.persist
-├── shared/              # Cross-tier utilities (config, llm, embeddings, loader,
-│                        # cost_tracker, pricing, display) — shared by all 5 tiers
-├── scripts/             # One-off CLI tools (curate_corpus, extract_figures,
-│                        # cut_video_clips, build_metadata)
-├── tests/               # Pytest suite (live tests gated behind @live marker)
-├── tier-1-naive/        # Tier 1 — Naive ChromaDB RAG (Phase 128)
-├── tier-2-file-search/  # Tier 2 — Gemini File Search (Phase 128)
-├── tier-3-graph/        # Tier 3 — LightRAG (Phase 129)
-├── tier-4-multimodal/   # Tier 4 — RAG-Anything (Phase 130)
-├── tier-5-agentic/      # Tier 5 — OpenAI Agents (Phase 130)
-└── pyproject.toml       # Editable install with [shared] + [tier-N] extras
+├── dataset/                # Corpus (LFS): papers, figures, manifests
+├── evaluation/             # Golden Q&A, RAGAS harness, results
+│   ├── golden_qa.json      # 30 hand-authored evaluation questions
+│   ├── harness/            # pipeline.py, run.py, score.py, compare.py,
+│   │                       # freeze.py, smoke_gate.py, multi_judge_spotcheck.py
+│   └── results/
+│       ├── frozen/         # Immutable v1.0 handoff artifacts (md + manifest)
+│       ├── comparison.md   # Latest tier rollup (regenerated by compare.py)
+│       ├── queries/        # Per-tier capture JSON (gitignored runtime)
+│       ├── metrics/        # Per-tier RAGAS scores (gitignored runtime)
+│       └── costs/          # Per-run cost JSON written by CostTracker.persist
+├── shared/                 # Cross-tier utilities (config, llm, embeddings, loader,
+│                           # cost_tracker, pricing, display) — shared by all 5 tiers
+├── scripts/                # One-off CLI tools (curate_corpus, extract_figures,
+│                           # build_metadata, etc.)
+├── tests/                  # Pytest suite (live tests gated behind @live marker)
+├── tier-1-naive/           # Tier 1 — Naive ChromaDB RAG (source of truth)
+├── tier-2-managed/         # Tier 2 — Gemini File Search
+├── tier-3-graph/           # Tier 3 — LightRAG
+├── tier-4-multimodal/      # Tier 4 — RAG-Anything + MineRU
+├── tier-5-agentic/         # Tier 5 — OpenAI Agents
+├── tier_1_naive/ ... tier_5_agentic/  # Importable shims (see "Folder naming" above)
+└── pyproject.toml          # Editable install with [shared] + [tier-N] extras
 ```
 
 ## Setup
@@ -74,7 +93,9 @@ cd rag-architecture-patterns
 uv venv && source .venv/bin/activate
 uv pip install -e ".[shared]"
 cp .env.example .env
-# Edit .env to set GEMINI_API_KEY (https://aistudio.google.com/app/apikey)
+# Edit .env: OPENROUTER_API_KEY (Tiers 1, 3, 4, 5) and GEMINI_API_KEY (Tier 2 + smoke test)
+#   OpenRouter: https://openrouter.ai/keys
+#   Gemini:     https://aistudio.google.com/app/apikey
 ```
 
 ### Full dataset (pulls all LFS objects, ~290 MB)
@@ -88,7 +109,7 @@ git lfs pull
 ### Tier-specific dependencies
 
 ```bash
-uv pip install -r tier-1-naive/requirements.txt   # or tier-2, tier-3, tier-4, tier-5
+uv pip install -e ".[tier-1]"   # or tier-2, tier-3, tier-4, tier-5
 ```
 
 Each tier's `requirements.txt` is a one-liner pointing at the parent `pyproject.toml` extras (`-e ..[tier-N]`), so the tier deps stay a single source of truth.
@@ -100,15 +121,16 @@ pytest tests/smoke_test.py -m live
 ```
 
 The smoke test imports every shared module, calls `get_settings()` to verify
-`GEMINI_API_KEY` is populated, then issues one real `embed("hello world")`
-and one real `complete("Reply with exactly: ok")` call against Gemini's
-default flash + embedding-001 models. Per-run cost is ~$0.0001.
+keys are populated, then issues one real `embed("hello world")` and one real
+`complete("Reply with exactly: ok")` call against Gemini's default flash +
+embedding model. Tier-level smoke is run via `evaluation/harness/smoke_gate.py`
+(5 questions per tier) before any full sweep.
 
 ### Full test suite
 
 ```bash
-pytest tests/ -v -m 'not live'   # 49 tests, no API calls, <1s
-pytest tests/ -v                 # 49 + 3 live tests with .env set
+pytest tests/ -v -m 'not live'   # offline tests, no API calls
+pytest tests/ -v                 # adds live tests with .env set
 ```
 
 ## Evaluation
@@ -122,9 +144,31 @@ The 30-question golden set lives at [`evaluation/golden_qa.json`](./evaluation/g
 | Multimodal | 10 | multimodal | mixed | Tier 4 (Multimodal) |
 | Video | 0 | — | — | (deferred — see Dataset note) |
 
-Per-run cost JSON lands under `evaluation/results/costs/`. The full evaluation harness is built in Phase 131.
+### Running a full sweep
+
+```bash
+python -m evaluation.harness.pipeline   # single-SHA invariant; runs all tiers + RAGAS + compare
+python -m evaluation.harness.compare    # regenerate evaluation/results/comparison.md
+python -m evaluation.harness.freeze     # promote a comparison.md to evaluation/results/frozen/
+```
+
+A full RAGAS sweep is ~$0.20–0.50 against the $3.00 ceiling (v1.0 actual: $0.439). The frozen v1.0 manifest at [`evaluation/results/frozen/eval-numbers-v1.0.manifest.json`](./evaluation/results/frozen/eval-numbers-v1.0.manifest.json) is the canonical reproducibility example (records sweep date, git SHA, judge model, generation model, per-tier embedder).
 
 See [`evaluation/README.md`](./evaluation/README.md) for the entry schema.
+
+## v1.0 Results (2026-05-08)
+
+From [`evaluation/results/frozen/eval-numbers-v1.0.md`](./evaluation/results/frozen/eval-numbers-v1.0.md), full 30-question × 5-tier RAGAS sweep, single git SHA `75f6f1b`:
+
+| Tier | Faithfulness | Answer Relevancy | Context Precision | Mean Latency (s) | Cost / Query (USD) |
+|------|-------------:|-----------------:|------------------:|-----------------:|-------------------:|
+| 1 Naive       | 0.851 | 0.458 | 0.459 | 2.78 | 0.001150 |
+| 2 Managed     | 0.427 | 0.814 | 0.125 | 6.41 | 0.000994 |
+| 3 Graph       | 0.968 | 0.759 | 0.883 | 1.16 | 0.000004 |
+| 4 Multimodal  | 0.791 | 0.263 | 0.238 | 6.61 | 0.000000 |
+| 5 Agentic     | 0.768 | 0.688 | 0.252 | 9.13 | 0.001781 |
+
+A multi-judge spot-check using Claude Haiku 4.5 as a secondary judge (15 cells) produced per-tier ΔF of T1 -0.035, T4 +0.010, T5 -0.164. See the frozen md for the full per-class breakdown, provenance per tier, and honest disclosures.
 
 ## License
 
