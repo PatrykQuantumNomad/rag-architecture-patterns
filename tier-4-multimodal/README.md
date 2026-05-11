@@ -1,8 +1,11 @@
 > [!WARNING]
 > **First run downloads ~3-5 GB of MineRU layout/OCR models (~5-15 min cold start).**
-> Full-corpus ingest costs **~$1-2** (vision + LLM + embed across 100 PDFs + 581 images;
-> ~30-60 min depending on rate-limit headroom). For most users, **use Docker** — the image
-> bakes the model cache in a build stage. See "Docker Quickstart" below.
+> Happy-path full-corpus ingest costs **~$1-2** in ~30-60 min (vision + LLM + embed across
+> 100 PDFs + 581 images, model cache warm, rate-limit headroom intact). One logged 79-paper
+> full rebuild (Phase 07-02, `evaluation/results/diagnostics/tier-4-graph-stats-2026-05-07T10_31_52Z.json`)
+> landed at **$24.85** and **13h55m** after a mid-run OpenRouter balance exhaustion produced
+> ~31k retry events — budget for that variance on first runs. For most users, **use Docker**
+> — the image bakes the model cache in a build stage. See "Docker Quickstart" below.
 
 # Tier 4: Multimodal RAG (RAG-Anything)
 
@@ -16,7 +19,7 @@ A representative Tier-4 win is an **image-grounded query that Tier 1/2/3 cannot 
 
 Tier 1's vector top-k cannot retrieve image content (it embeds text only). Tier 2 (Gemini File Search) accepts PDFs but has no per-image vision pass. Tier 3 (graph) strips figures at extract time. Tier 4 indexes the image during ingest, links it to surrounding text via shared entities, and walks both the image entity and the cross-document conceptual link at query time.
 
-If Tier 3 is "expensive once, much smarter on hard questions", Tier 4 is "even more expensive, AND answers a question class the prior tiers can't touch." The cost asymmetry is real (full-corpus ingest ~$1-2 vs Tier 3 ~$1) but so is the capability delta — Tier 4 unlocks image-grounded multimodal Q&A.
+If Tier 3 is "expensive once, much smarter on hard questions", Tier 4 is "even more expensive, AND answers a question class the prior tiers can't touch." The happy-path cost asymmetry is real (full-corpus ingest ~$1-2 vs Tier 3 ~$1), and the worst-case variance on a fresh box without rate-limit headroom is an order of magnitude beyond that — but so is the capability delta, and Tier 4 unlocks image-grounded multimodal Q&A no other tier can answer.
 
 ---
 
