@@ -133,6 +133,133 @@ pytest tests/ -v -m 'not live'   # offline tests, no API calls
 pytest tests/ -v                 # adds live tests with .env set
 ```
 
+## Querying each tier
+
+All five tiers share the same CLI shape (`--ingest`, `--query "..."`, `--reset`). The committed storage directories (`chroma_db/`, `lightrag_storage/`, `rag_anything_storage/`) are already populated from the v1.0 sweep, so you can query without re-ingesting.
+
+### Tier 1 — Naive ChromaDB
+
+Storage: `chroma_db/tier-1-naive/` (`chroma.sqlite3` + collection dir).
+
+```bash
+python tier-1-naive/main.py --query "What is HyDE retrieval?"
+python tier-1-naive/main.py --query "..." --top-k 8 --model google/gemini-2.5-flash
+python tier-1-naive/main.py --ingest --reset    # wipe + re-embed (~$0.10)
+```
+
+### Tier 2 — Gemini Managed File Search
+
+No local index — the store lives in Google's File Search service. `tier-2-managed/.store_id` (if present) pins the store ID; otherwise the first run uploads.
+
+```bash
+python tier-2-managed/main.py --query "What is HyDE retrieval?"
+python tier-2-managed/main.py --ingest --reset   # wipe + re-upload to Gemini
+```
+
+### Tier 3 — LightRAG Graph
+
+Storage: `lightrag_storage/tier-3-graph/` (graphml + 12 kv/vdb JSON files).
+
+```bash
+python tier-3-graph/main.py --query "How does GraphRAG handle multi-hop?" --mode hybrid
+# Modes: naive | local | global | hybrid | mix
+python tier-3-graph/main.py --reset --ingest --yes   # ⚠ re-extract costs ~$1
+```
+
+### Tier 4 — RAG-Anything Multimodal
+
+Storage: `rag_anything_storage/tier-4-multimodal/` (28,597 nodes / 80,419 edges from 79 papers).
+
+```bash
+python tier-4-multimodal/main.py --query "What does Figure 1 of the RAG paper depict?"
+```
+
+⚠ Avoid `--ingest` unless you mean it — re-ingest requires MineRU on the host (outside the sandbox per `.planning/PROJECT.md`) and previously cost $24.85 / 13h55m wall.
+
+### Tier 5 — OpenAI Agents
+
+Reuses Tier 1's `chroma_db/tier-1-naive/` as its retrieval backend — as long as Tier 1 is ingested, Tier 5 works.
+
+```bash
+python tier-5-agentic/main.py --query "Compare HyDE and traditional dense retrieval"
+```
+
+Each `main.py` accepts `--help` for the full flag list. The tier-local `README.md` files have deeper context on each architecture.
+
+## GUI / inspection tools
+
+Only LightRAG ships an official GUI; everything else is third-party or a graph-viz tool.
+
+### LightRAG WebUI (Tier 3 + Tier 4) — official, built-in
+
+LightRAG includes a web UI as part of `lightrag-server`. Because Tier 4 (RAG-Anything) uses LightRAG's storage layer, the same server works for both — just point `--working-dir` at the storage you want to inspect.
+
+```bash
+# Tier 3 (Graph)
+lightrag-server \
+  --working-dir lightrag_storage/tier-3-graph \
+  --llm-binding openai \
+  --embedding-binding openai \
+  --port 9621
+# Open http://localhost:9621
+
+# Tier 4 (Multimodal) — same UI, different storage, different port
+lightrag-server \
+  --working-dir rag_anything_storage/tier-4-multimodal \
+  --llm-binding openai \
+  --embedding-binding openai \
+  --port 9622
+```
+
+You'll need OpenAI-compatible env vars set for the bindings (e.g. `OPENAI_API_BASE=https://openrouter.ai/api/v1`, `OPENAI_API_KEY=$OPENROUTER_API_KEY`). The UI exposes graph visualization, document list, query playground with mode switching (naive / local / global / hybrid / mix), and entity/relationship browsing.
+
+### ChromaDB (Tier 1 + Tier 5) — no official GUI
+
+The `chroma` CLI only runs a server. For visual inspection:
+
+```bash
+# Run Chroma as a server, then point a third-party admin at it
+chroma run --path chroma_db/tier-1-naive --port 8000
+#   - chromadb-admin   (Node:  github.com/flanker/chromadb-admin)
+#   - chroma-ui        (PyPI:  pip install chroma-ui)
+```
+
+Or skip the GUI and poke the SQLite / Python client directly:
+
+```bash
+sqlite3 chroma_db/tier-1-naive/chroma.sqlite3 ".tables"
+
+python -c "
+import chromadb
+c = chromadb.PersistentClient('chroma_db/tier-1-naive')
+col = c.list_collections()[0]
+print(col.name, col.count())
+print(col.peek(5))
+"
+```
+
+### Tier 2 — Gemini File Search
+
+Google-managed, no local UI. Inspect via [Google AI Studio](https://aistudio.google.com/) or the Gemini API. The helpers in `tier-2-managed/store.py` (`list_existing_documents`, `get_or_create_store`) give programmatic access.
+
+### Graphml viewers (Tier 3 + Tier 4)
+
+Both `graph_chunk_entity_relation.graphml` files open in standard graph-viz desktop apps:
+
+- **Gephi** — best for large graphs, force-directed layouts (`brew install --cask gephi`)
+- **Cytoscape** — `brew install --cask cytoscape`
+- **yEd** — lightweight (`brew install --cask yed`)
+
+Quick Python peek without launching a UI:
+
+```python
+import networkx as nx
+g = nx.read_graphml('rag_anything_storage/tier-4-multimodal/graph_chunk_entity_relation.graphml')
+print(g.number_of_nodes(), g.number_of_edges())
+# Top-10 entities by degree:
+print(sorted(g.degree, key=lambda x: -x[1])[:10])
+```
+
 ## Evaluation
 
 The 30-question golden set lives at [`evaluation/golden_qa.json`](./evaluation/golden_qa.json) — the same questions are asked of every tier. The shipped split is:
